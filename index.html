@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIVK - India's Smartest AI Assistant | Virtual Intelligent Versatile Knowledge</title>
+    <meta name="description" content="VIVK is India's most affordable and intelligent AI assistant. Built for Indian businesses and individuals. Start for free today.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #0066CC 0%, #0052A3 100%);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #0066CC 0%, #FF9933 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 102, 204, 0.15);
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .pricing-card {
+            transition: all 0.3s ease;
+        }
+        
+        .pricing-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .popular-badge {
+            background: linear-gradient(135deg, #FF9933 0%, #FF7700 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm fixed w-full top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold gradient-text">VIVK</span>
+                    <span class="ml-2 text-sm text-gray-600 hidden sm:inline">Virtual Intelligent Versatile Knowledge</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="#features" class="text-gray-600 hover:text-blue-600 hidden md:inline">Features</a>
+                    <a href="#pricing" class="text-gray-600 hover:text-blue-600 hidden md:inline">Pricing</a>
+                    <a href="#faq" class="text-gray-600 hover:text-blue-600 hidden md:inline">FAQ</a>
+                    <button onclick="scrollToWaitlist()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                        Get Started Free
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg text-white pt-32 pb-20 px-4">
+        <div class="max-w-7xl mx-auto text-center">
+            <div class="inline-block mb-4 px-4 py-2 bg-white/20 rounded-full text-sm font-medium backdrop-blur-sm">
+                🚀 Made in India, Made for India
+            </div>
+            <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+                India's Smartest<br/>AI Assistant
+            </h1>
+            <p class="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+                Your intelligent companion for work, creativity, and learning. Built for Indian businesses and individuals. Starting at just ₹499/month.
+            </p>
+            
+            <!-- Waitlist Form -->
+            <div class="max-w-md mx-auto mb-8">
+                <div class="bg-white rounded-lg p-2 shadow-xl flex flex-col sm:flex-row gap-2">
+                    <input 
+                        type="email" 
+                        id="emailInput"
+                        placeholder="Enter your email" 
+                        class="flex-1 px-4 py-3 text-gray-800 rounded-md focus:outline-none"
+                    />
+                    <button onclick="joinWaitlist()" class="bg-blue-600 text-white px-8 py-3 rounded-md hover:bg-blue-700 transition font-semibold whitespace-nowrap">
+                        Start Free Trial
+                    </button>
+                </div>
+                <p class="text-sm text-blue-100 mt-3">
+                    ✓ Free for 7 days &nbsp;•&nbsp; ✓ No credit card required &nbsp;•&nbsp; ✓ Cancel anytime
+                </p>
+            </div>
+
+            <!-- Social Proof -->
+            <div class="flex justify-center items-center space-x-8 text-sm">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-2">⭐⭐⭐⭐⭐</span>
+                    <span>4.9/5 rating</span>
+                </div>
+                <div>
+                    <span class="font-bold text-lg">500+</span>
+                    <span class="ml-1">happy users</span>
+                </div>
+                <div>
+                    <span class="font-bold text-lg">50+</span>
+                    <span class="ml-1">businesses trust us</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="py-20 px-4 bg-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    International AI Tools Are...
+                </h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Too expensive, don't understand Indian context, and lack local support
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-red-50 p-8 rounded-xl border-2 border-red-200">
+                    <div class="text-4xl mb-4">💸</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Too Expensive</h3>
+                    <p class="text-gray-600">$20-30/month (₹1,650-2,500) - unaffordable for most Indian businesses</p>
+                </div>
+
+                <div class="bg-red-50 p-8 rounded-xl border-2 border-red-200">
+                    <div class="text-4xl mb-4">🌏</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Foreign Context</h3>
+                    <p class="text-gray-600">Doesn't understand Indian holidays, festivals, business culture, or local languages</p>
+                </div>
+
+                <div class="bg-red-50 p-8 rounded-xl border-2 border-red-200">
+                    <div class="text-4xl mb-4">⏰</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">No Local Support</h3>
+                    <p class="text-gray-600">Support during US hours, no understanding of Indian time zones or urgent needs</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section class="py-20 px-4 bg-gradient-to-br from-blue-50 to-orange-50">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    Meet VIVK - Built Specifically for India
+                </h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Everything you need in an AI assistant, at a price that makes sense
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12 items-center mb-16">
+                <div>
+                    <div class="bg-white p-8 rounded-2xl shadow-xl">
+                        <div class="text-5xl mb-4">🤖</div>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Powerful AI, Affordable Pricing</h3>
+                        <p class="text-gray-600 mb-6">
+                            Get the same advanced AI technology (powered by Claude Sonnet) at 70% lower cost than international alternatives. Starting at just ₹499/month - that's less than your daily chai expense!
+                        </p>
+                        <ul class="space-y-3">
+                            <li class="flex items-start">
+                                <span class="text-green-500 mr-2 text-xl">✓</span>
+                                <span class="text-gray-700">Advanced AI model (Claude Sonnet 4)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-green-500 mr-2 text-xl">✓</span>
+                                <span class="text-gray-700">Unlimited conversations</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-green-500 mr-2 text-xl">✓</span>
+                                <span class="text-gray-700">Lightning-fast responses</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="bg-white p-8 rounded-2xl shadow-xl">
+                        <div class="text-5xl mb-4">🇮🇳</div>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Understands India</h3>
+                        <p class="text-gray-600 mb-6">
+                            VIVK is trained to understand Indian context, culture, festivals, and business practices. From Diwali greetings to GST calculations, VIVK speaks your language.
+                        </p>
+                        <ul class="space-y-3">
+                            <li class="flex items-start">
+                                <span class="text-green-500 mr-2 text-xl">✓</span>
+                                <span class="text-gray-700">Indian holidays and cultural context</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-green-500 mr-2 text-xl">✓</span>
+                                <span class="text-gray-700">Support for Hindi and regional languages (coming soon)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-green-500 mr-2 text-xl">✓</span>
+                                <span class="text-gray-700">Indian business practices and compliance</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 px-4 bg-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    Everything You Need to Work Smarter
+                </h2>
+                <p class="text-xl text-gray-600">One AI assistant for all your needs</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="feature-card bg-white p-8 rounded-xl border-2 border-gray-200">
+                    <div class="text-4xl mb-4">✍️</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Content Creation</h3>
+                    <p class="text-gray-600">
+                        Write emails, blogs, social media posts, product descriptions - all in minutes. Perfect for marketers and content creators.
+                    </p>
+                </div>
+
+                <div class="feature-card bg-white p-8 rounded-xl border-2 border-gray-200">
+                    <div class="text-4xl mb-4">💼</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Business Automation</h3>
+                    <p class="text-gray-600">
+                        Draft contracts, create presentations, analyze data, prepare reports. Your 24/7 business assistant.
+                    </p>
+                </div>
+
+                <div class="feature-card bg-white p-8 rounded-xl border-2 border-gray-200">
+                    <div class="text-4xl mb-4">💻</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Coding Help</h3>
+                    <p class="text-gray-600">
+                        Debug code, learn programming, build applications. Perfect for developers and students learning to code.
+                    </p>
+                </div>
+
+                <div class="feature-card bg-white p-8 rounded-xl border-2 border-gray-200">
+                    <div class="text-4xl mb-4">📚</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Learning & Research</h3>
+                    <p class="text-gray-600">
+                        Get explanations on any topic, research help, study guides. Your personal tutor for any subject.
+                    </p>
+                </div>
+
+                <div class="feature-card bg-white p-8 rounded-xl border-2 border-gray-200">
+                    <div class="text-4xl mb-4">🎨</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Creative Ideas</h3>
+                    <p class="text-gray-600">
+                        Brainstorm business names, marketing campaigns, product ideas. Unlock your creativity with AI.
+                    </p>
+                </div>
+
+                <div class="feature-card bg-white p-8 rounded-xl border-2 border-gray-200">
+                    <div class="text-4xl mb-4">🌐</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Multi-Language</h3>
+                    <p class="text-gray-600">
+                        Translate between languages, communicate globally. Hindi, Tamil, Telugu support coming soon!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases Section -->
+    <section class="py-20 px-4 bg-gray-50">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    Who Uses VIVK?
+                </h2>
+                <p class="text-xl text-gray-600">From freelancers to enterprises</p>
+            </div>
+
+            <div class="grid md:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="text-3xl mb-3">👨‍💼</div>
+                    <h4 class="font-bold text-gray-900 mb-2">Entrepreneurs</h4>
+                    <p class="text-sm text-gray-600">Business plans, pitch decks, market research</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="text-3xl mb-3">✍️</div>
+                    <h4 class="font-bold text-gray-900 mb-2">Content Creators</h4>
+                    <p class="text-sm text-gray-600">Blog posts, scripts, social media content</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="text-3xl mb-3">👨‍💻</div>
+                    <h4 class="font-bold text-gray-900 mb-2">Developers</h4>
+                    <p class="text-sm text-gray-600">Code debugging, documentation, learning</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="text-3xl mb-3">🎓</div>
+                    <h4 class="font-bold text-gray-900 mb-2">Students</h4>
+                    <p class="text-sm text-gray-600">Study help, assignments, research papers</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="text-3xl mb-3">📊</div>
+                    <h4 class="font-bold text-gray-900 mb-2">Marketing Teams</h4>
+                    <p class="text-sm text-gray-600">Ad copy, campaigns, SEO content</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="text-3xl mb-3">💼</div>
+                    <h4 class="font-bold text-gray-900 mb-2">HR Professionals</h4>
+                    <p class="text-sm text-gray-600">Job descriptions, emails, policies</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="text-3xl mb-3">🏪</div>
+                    <h4 class="font-bold text-gray-900 mb-2">E-commerce</h4>
+                    <p class="text-sm text-gray-600">Product descriptions, customer support</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="text-3xl mb-3">🎯</div>
+                    <h4 class="font-bold text-gray-900 mb-2">Consultants</h4>
+                    <p class="text-sm text-gray-600">Reports, presentations, client proposals</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="py-20 px-4 bg-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    Simple, Transparent Pricing
+                </h2>
+                <p class="text-xl text-gray-600">Start free, upgrade when you're ready</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                <!-- Free Plan -->
+                <div class="pricing-card bg-white border-2 border-gray-200 rounded-2xl p-8">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Free</h3>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-gray-900">₹0</span>
+                        <span class="text-gray-600">/forever</span>
+                    </div>
+                    <p class="text-gray-600 mb-6">Perfect for trying out VIVK</p>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">20 queries per day</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Basic AI model</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">7-day chat history</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Email support</span>
+                        </li>
+                    </ul>
+                    <button onclick="scrollToWaitlist()" class="w-full bg-gray-100 text-gray-900 py-3 rounded-lg hover:bg-gray-200 transition font-semibold">
+                        Start Free
+                    </button>
+                </div>
+
+                <!-- Pro Plan (Popular) -->
+                <div class="pricing-card bg-white border-4 border-blue-600 rounded-2xl p-8 relative transform scale-105">
+                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <span class="popular-badge text-white px-4 py-1 rounded-full text-sm font-semibold">
+                            MOST POPULAR
+                        </span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-gray-900">₹499</span>
+                        <span class="text-gray-600">/month</span>
+                    </div>
+                    <p class="text-gray-600 mb-6">Best for professionals & small teams</p>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700"><strong>Unlimited</strong> queries</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700"><strong>Advanced</strong> AI model</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Unlimited chat history</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Priority support</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Export conversations</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">API access</span>
+                        </li>
+                    </ul>
+                    <button onclick="scrollToWaitlist()" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+                        Start 7-Day Free Trial
+                    </button>
+                </div>
+
+                <!-- Business Plan -->
+                <div class="pricing-card bg-white border-2 border-gray-200 rounded-2xl p-8">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Business</h3>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-gray-900">₹2,999</span>
+                        <span class="text-gray-600">/month</span>
+                    </div>
+                    <p class="text-gray-600 mb-6">For teams and enterprises</p>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700"><strong>Everything in Pro</strong></span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Team collaboration</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Custom integrations</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Dedicated support</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">SLA guarantee</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-2">✓</span>
+                            <span class="text-gray-700">Custom training</span>
+                        </li>
+                    </ul>
+                    <button onclick="scrollToWaitlist()" class="w-full bg-gray-100 text-gray-900 py-3 rounded-lg hover:bg-gray-200 transition font-semibold">
+                        Contact Sales
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-center text-gray-600 mt-8">
+                💳 All plans include GST. Cancel anytime. Money-back guarantee if not satisfied.
+            </p>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="py-20 px-4 bg-gradient-to-br from-blue-50 to-orange-50">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    Loved by Indian Users
+                </h2>
+                <p class="text-xl text-gray-600">See what our customers are saying</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 text-xl">⭐⭐⭐⭐⭐</div>
+                    </div>
+                    <p class="text-gray-700 mb-4 italic">
+                        "VIVK has been a game-changer for my content creation. I can write blog posts 5x faster now. And at ₹499/month, it's a steal compared to ChatGPT Plus!"
+                    </p>
+                    <div class="flex items-center">
+                        <div>
+                            <p class="font-bold text-gray-900">Priya Sharma</p>
+                            <p class="text-sm text-gray-600">Content Creator, Mumbai</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 text-xl">⭐⭐⭐⭐⭐</div>
+                    </div>
+                    <p class="text-gray-700 mb-4 italic">
+                        "Finally an AI tool that understands Indian business context! I use it for everything from drafting emails to analyzing market reports. Highly recommended."
+                    </p>
+                    <div class="flex items-center">
+                        <div>
+                            <p class="font-bold text-gray-900">Rahul Verma</p>
+                            <p class="text-sm text-gray-600">Startup Founder, Bangalore</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="text-yellow-400 text-xl">⭐⭐⭐⭐⭐</div>
+                    </div>
+                    <p class="text-gray-700 mb-4 italic">
+                        "As a student preparing for competitive exams, VIVK helps me understand complex topics easily. It's like having a personal tutor available 24/7!"
+                    </p>
+                    <div class="flex items-center">
+                        <div>
+                            <p class="font-bold text-gray-900">Anjali Patel</p>
+                            <p class="text-sm text-gray-600">Engineering Student, Delhi</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section class="py-20 px-4 bg-white">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    VIVK vs Others
+                </h2>
+                <p class="text-xl text-gray-600">See how we compare</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b-2 border-gray-300">
+                            <th class="text-left p-4 text-gray-600">Feature</th>
+                            <th class="text-center p-4 bg-blue-50 font-bold text-blue-900">VIVK</th>
+                            <th class="text-center p-4 text-gray-600">ChatGPT Plus</th>
+                            <th class="text-center p-4 text-gray-600">Others</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-200">
+                            <td class="p-4 text-gray-700">Price (monthly)</td>
+                            <td class="text-center p-4 bg-blue-50 font-bold text-blue-900">₹499</td>
+                            <td class="text-center p-4 text-gray-600">₹1,650</td>
+                            <td class="text-center p-4 text-gray-600">₹1,200-2,500</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 bg-gray-50">
+                            <td class="p-4 text-gray-700">Indian Context</td>
+                            <td class="text-center p-4 bg-blue-50 text-2xl">✅</td>
+                            <td class="text-center p-4 text-2xl">❌</td>
+                            <td class="text-center p-4 text-2xl">❌</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="p-4 text-gray-700">Local Support</td>
+                            <td class="text-center p-4 bg-blue-50 text-2xl">✅</td>
+                            <td class="text-center p-4 text-2xl">❌</td>
+                            <td class="text-center p-4 text-2xl">❌</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 bg-gray-50">
+                            <td class="p-4 text-gray-700">Regional Languages</td>
+                            <td class="text-center p-4 bg-blue-50 text-sm">Coming Soon</td>
+                            <td class="text-center p-4 text-2xl">❌</td>
+                            <td class="text-center p-4 text-2xl">❌</td>
+                        </tr>
+                        <tr class="border-b border-gray-200">
+                            <td class="p-4 text-gray-700">Advanced AI Model</td>
+                            <td class="text-center p-4 bg-blue-50 text-2xl">✅</td>
+                            <td class="text-center p-4 text-2xl">✅</td>
+                            <td class="text-center p-4 text-2xl">✅</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-20 px-4 bg-gray-50">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    Frequently Asked Questions
+                </h2>
+            </div>
+
+            <div class="space-y-4">
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">What is VIVK?</summary>
+                    <p class="mt-3 text-gray-600">
+                        VIVK (Virtual Intelligent Versatile Knowledge) is an AI-powered assistant built specifically for Indian users and businesses. It helps with content creation, coding, research, business tasks, and more - all at an affordable price.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">How is VIVK different from ChatGPT?</summary>
+                    <p class="mt-3 text-gray-600">
+                        VIVK is built for India. We understand Indian holidays, business practices, and cultural context. We're 70% cheaper (₹499 vs ₹1,650/month), provide local support during Indian hours, and will soon support Hindi and other regional languages.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">Is there a free trial?</summary>
+                    <p class="mt-3 text-gray-600">
+                        Yes! We offer a 7-day free trial of our Pro plan. No credit card required. You can also use our Free plan forever with 20 queries per day.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">What can I use VIVK for?</summary>
+                    <p class="mt-3 text-gray-600">
+                        Content writing, coding help, business documents, learning & research, email drafting, social media content, brainstorming ideas, data analysis, translations, and much more. If you can ask it, VIVK can help.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">Which AI model does VIVK use?</summary>
+                    <p class="mt-3 text-gray-600">
+                        VIVK uses Claude Sonnet 4, one of the most advanced AI models available. This ensures you get accurate, helpful, and intelligent responses every time.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">Can I cancel anytime?</summary>
+                    <p class="mt-3 text-gray-600">
+                        Absolutely! No long-term contracts. Cancel your subscription anytime with just one click. If you're not satisfied within the first 7 days, we'll give you a full refund.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">Do you support Hindi or other Indian languages?</summary>
+                    <p class="mt-3 text-gray-600">
+                        Currently, VIVK works best in English. However, we're actively working on adding support for Hindi, Tamil, Telugu, Bengali, and other major Indian languages. This will be available in the next few months!
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">Is my data safe?</summary>
+                    <p class="mt-3 text-gray-600">
+                        Yes! We take data security very seriously. All conversations are encrypted, and we never share your data with third parties. Your privacy is our top priority.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">What payment methods do you accept?</summary>
+                    <p class="mt-3 text-gray-600">
+                        We accept all major credit/debit cards, UPI, net banking, and wallets through Razorpay - India's most trusted payment gateway.
+                    </p>
+                </details>
+
+                <details class="bg-white p-6 rounded-lg shadow-sm">
+                    <summary class="font-bold text-gray-900 cursor-pointer">Do you offer student or startup discounts?</summary>
+                    <p class="mt-3 text-gray-600">
+                        Yes! We offer special pricing for students and early-stage startups. Contact us at hello@vivk.in with your details to learn more about our discount programs.
+                    </p>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section class="gradient-bg text-white py-20 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-3xl md:text-5xl font-bold mb-6">
+                Ready to Work Smarter with AI?
+            </h2>
+            <p class="text-xl mb-8 text-blue-100">
+                Join 500+ Indian professionals, students, and businesses using VIVK
+            </p>
+            
+            <div id="finalWaitlist" class="max-w-md mx-auto mb-8">
+                <div class="bg-white rounded-lg p-2 shadow-xl flex flex-col sm:flex-row gap-2">
+                    <input 
+                        type="email" 
+                        id="emailInputFinal"
+                        placeholder="Enter your email" 
+                        class="flex-1 px-4 py-3 text-gray-800 rounded-md focus:outline-none"
+                    />
+                    <button onclick="joinWaitlistFinal()" class="bg-blue-600 text-white px-8 py-3 rounded-md hover:bg-blue-700 transition font-semibold">
+                        Start Free Trial
+                    </button>
+                </div>
+                <p class="text-sm text-blue-100 mt-3">
+                    ✓ 7-day free trial &nbsp;•&nbsp; ✓ No credit card &nbsp;•&nbsp; ✓ Cancel anytime
+                </p>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-6 text-sm">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>500+ users</span>
+                </div>
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>Made in India</span>
+                </div>
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>7-day money back</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 py-12 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <h3 class="text-white font-bold text-xl mb-4 gradient-text">VIVK</h3>
+                    <p class="text-sm">
+                        India's smartest AI assistant. Built for Indian businesses and individuals.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#features" class="hover:text-white">Features</a></li>
+                        <li><a href="#pricing" class="hover:text-white">Pricing</a></li>
+                        <li><a href="#" class="hover:text-white">API</a></li>
+                        <li><a href="#" class="hover:text-white">Roadmap</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white">About Us</a></li>
+                        <li><a href="#" class="hover:text-white">Blog</a></li>
+                        <li><a href="#" class="hover:text-white">Careers</a></li>
+                        <li><a href="#" class="hover:text-white">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Legal</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-white">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-white">Refund Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-sm mb-4 md:mb-0">
+                        © 2026 VIVK. Made with ❤️ in India.
+                    </p>
+                    <div class="flex space-x-6">
+                        <a href="#" class="hover:text-white">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path></svg>
+                        </a>
+                        <a href="#" class="hover:text-white">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"></path><circle cx="4" cy="4" r="2"></circle></svg>
+                        </a>
+                        <a href="#" class="hover:text-white">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"></path><path d="M12 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zm0 10.162a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"></path></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function scrollToWaitlist() {
+            document.getElementById('emailInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('emailInput').focus();
+        }
+
+        function joinWaitlist() {
+            const email = document.getElementById('emailInput').value;
+            if (!email || !email.includes('@')) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            // Here you would integrate with your email service (Mailchimp, ConvertKit, etc.)
+            // For now, we'll just show a success message
+            alert('🎉 Thanks for joining! Check your email for next steps.');
+            document.getElementById('emailInput').value = '';
+            
+            // In production, you'd do something like:
+            // fetch('/api/waitlist', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ email })
+            // });
+        }
+
+        function joinWaitlistFinal() {
+            const email = document.getElementById('emailInputFinal').value;
+            if (!email || !email.includes('@')) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            alert('🎉 Thanks for joining! Check your email for next steps.');
+            document.getElementById('emailInputFinal').value = '';
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
