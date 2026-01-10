@@ -1,0 +1,115 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark background for demonstration (remove when using on actual dark bg) -->
+  <rect width="100" height="100" fill="#1F2937" rx="5"/>
+  
+  <!-- Central Core - Light Blue -->
+  <circle cx="50" cy="50" r="12" fill="url(#gradient1White)">
+    <animate attributeName="r" values="12;13.5;12" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Inner Glow -->
+  <circle cx="50" cy="50" r="12" fill="url(#gradient1White)" opacity="0.4">
+    <animate attributeName="r" values="12;18;12" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.4;0.1;0.4" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Knowledge Nodes - 6 Orbiting Elements -->
+  
+  <!-- Top Node -->
+  <g transform="rotate(0 50 50)">
+    <circle cx="50" cy="20" r="5" fill="#FFB366">
+      <animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <line x1="50" y1="38" x2="50" y2="25" stroke="url(#lineGradient1White)" stroke-width="1.5" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.3;0.6" dur="2s" repeatCount="indefinite"/>
+    </line>
+  </g>
+  
+  <!-- Top Right Node -->
+  <g transform="rotate(60 50 50)">
+    <circle cx="50" cy="20" r="5" fill="#93C5FD">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+    </circle>
+    <line x1="50" y1="38" x2="50" y2="25" stroke="url(#lineGradient2White)" stroke-width="1.5" opacity="0.6">
+      <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+    </line>
+  </g>
+  
+  <!-- Bottom Right Node -->
+  <g transform="rotate(120 50 50)">
+    <circle cx="50" cy="20" r="5" fill="#FFB366">
+      <animate attributeName="opacity" values="1;0.6;1" dur="2s" begin="0.6s" repeatCount="indefinite"/>
+    </circle>
+    <line x1="50" y1="38" x2="50" y2="25" stroke="url(#lineGradient1White)" stroke-width="1.5" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.3;0.6" dur="2s" begin="0.6s" repeatCount="indefinite"/>
+    </line>
+  </g>
+  
+  <!-- Bottom Node -->
+  <g transform="rotate(180 50 50)">
+    <circle cx="50" cy="20" r="5" fill="#93C5FD">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" begin="0.9s" repeatCount="indefinite"/>
+    </circle>
+    <line x1="50" y1="38" x2="50" y2="25" stroke="url(#lineGradient2White)" stroke-width="1.5" opacity="0.6">
+      <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" begin="0.9s" repeatCount="indefinite"/>
+    </line>
+  </g>
+  
+  <!-- Bottom Left Node -->
+  <g transform="rotate(240 50 50)">
+    <circle cx="50" cy="20" r="5" fill="#FFB366">
+      <animate attributeName="opacity" values="1;0.6;1" dur="2s" begin="1.2s" repeatCount="indefinite"/>
+    </circle>
+    <line x1="50" y1="38" x2="50" y2="25" stroke="url(#lineGradient1White)" stroke-width="1.5" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.3;0.6" dur="2s" begin="1.2s" repeatCount="indefinite"/>
+    </line>
+  </g>
+  
+  <!-- Top Left Node -->
+  <g transform="rotate(300 50 50)">
+    <circle cx="50" cy="20" r="5" fill="#93C5FD">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" begin="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <line x1="50" y1="38" x2="50" y2="25" stroke="url(#lineGradient2White)" stroke-width="1.5" opacity="0.6">
+      <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" begin="1.5s" repeatCount="indefinite"/>
+    </line>
+  </g>
+  
+  <!-- Outer Ring -->
+  <circle cx="50" cy="50" r="38" fill="none" stroke="url(#ringGradientWhite)" stroke-width="2" opacity="0.4" stroke-dasharray="6 3">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      from="0 50 50"
+      to="360 50 50"
+      dur="20s"
+      repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Gradients for White Version -->
+  <defs>
+    <!-- Central Core Gradient (Light Blue) -->
+    <radialGradient id="gradient1White" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#60A5FA;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Line Gradients (White Version) -->
+    <linearGradient id="lineGradient1White" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFB366;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#93C5FD;stop-opacity:0.4" />
+    </linearGradient>
+    
+    <linearGradient id="lineGradient2White" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#93C5FD;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#FFB366;stop-opacity:0.4" />
+    </linearGradient>
+    
+    <!-- Ring Gradient (White Version) -->
+    <linearGradient id="ringGradientWhite" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#93C5FD;stop-opacity:0.7" />
+      <stop offset="50%" style="stop-color:#FFB366;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#93C5FD;stop-opacity:0.7" />
+    </linearGradient>
+  </defs>
+</svg>
