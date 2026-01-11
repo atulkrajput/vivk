@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { SessionProvider } from '@/components/providers/SessionProvider'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -20,7 +22,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <head>
+        <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+      </head>
+      <body className={inter.className}>
+        <ErrorBoundary>
+          <SessionProvider>
+            {children}
+          </SessionProvider>
+        </ErrorBoundary>
+      </body>
     </html>
   )
 }

@@ -1,0 +1,171 @@
+{
+  "timestamp": "2026-01-11T20:33:08.001Z",
+  "results": {
+    "environment": {
+      "score": 0,
+      "details": {
+        "DATABASE_URL": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "SUPABASE_URL": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "SUPABASE_ANON_KEY": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "NEXTAUTH_SECRET": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "NEXTAUTH_URL": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "ANTHROPIC_API_KEY": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "RAZORPAY_KEY_ID": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "RAZORPAY_KEY_SECRET": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "UPSTASH_REDIS_REST_URL": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "UPSTASH_REDIS_REST_TOKEN": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        },
+        "RESEND_API_KEY": {
+          "exists": false,
+          "hasValue": false,
+          "status": "❌"
+        }
+      },
+      "ready": false
+    },
+    "security": {
+      "score": 60,
+      "details": {
+        "httpsEnforced": {
+          "status": "❌"
+        },
+        "securityHeaders": {
+          "passed": true,
+          "status": "✅"
+        },
+        "authConfiguration": {
+          "status": "❌"
+        },
+        "inputValidation": {
+          "passed": true,
+          "status": "✅"
+        },
+        "rateLimiting": {
+          "passed": true,
+          "status": "✅"
+        }
+      },
+      "ready": false
+    },
+    "performance": {
+      "score": 60,
+      "details": {
+        "bundleOptimization": {
+          "passed": true,
+          "status": "✅"
+        },
+        "cacheConfiguration": {
+          "status": "❌"
+        },
+        "databaseOptimization": {
+          "status": "❌"
+        },
+        "cdnConfiguration": {
+          "passed": true,
+          "status": "✅"
+        },
+        "compressionEnabled": {
+          "passed": true,
+          "status": "✅"
+        }
+      },
+      "ready": false
+    },
+    "monitoring": {
+      "score": 100,
+      "details": {
+        "healthEndpoints": {
+          "passed": true,
+          "status": "✅"
+        },
+        "errorTracking": {
+          "passed": true,
+          "status": "✅"
+        },
+        "performanceMonitoring": {
+          "passed": true,
+          "status": "✅"
+        },
+        "uptimeMonitoring": {
+          "passed": true,
+          "status": "✅"
+        },
+        "alertConfiguration": {
+          "passed": true,
+          "status": "✅"
+        }
+      },
+      "ready": true
+    },
+    "services": {
+      "score": 0,
+      "details": {
+        "supabaseConnection": {
+          "status": "❌"
+        },
+        "redisConnection": {
+          "status": "❌"
+        },
+        "anthropicAPI": {
+          "status": "❌"
+        },
+        "razorpayAPI": {
+          "status": "❌"
+        },
+        "resendAPI": {
+          "status": "❌"
+        }
+      },
+      "ready": false
+    },
+    "overall": {
+      "score": 44,
+      "ready": false
+    }
+  },
+  "recommendations": [
+    "Configure all required environment variables",
+    "Address security configuration issues",
+    "Optimize performance configuration",
+    "Fix external service integration issues"
+  ]
+}

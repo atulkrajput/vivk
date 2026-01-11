@@ -1,0 +1,76 @@
+# Supabase Production Configuration for VIVK MVP
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "https://vivk.in"
+additional_redirect_urls = ["https://vivk.in/auth/callback"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+security_update_password_require_reauthentication = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_email_change_enabled = true
+
+[auth.sms]
+enable_signup = false
+
+[auth.external.google]
+enabled = false
+
+[auth.external.github]
+enabled = false
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[realtime]
+enabled = true
+ip_version = "IPv4"
+
+[storage]
+enabled = true
+file_size_limit = "50MB"
+image_transformation = {
+  enabled = true
+}
+
+[edge_functions]
+enabled = true
+ip_version = "IPv4"
+
+[analytics]
+enabled = true
+
+[functions]
+verify_jwt = true
+
+# Production-specific settings
+[db.pooler]
+enabled = true
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+# Security settings for production
+[auth.security]
+captcha_enabled = false
+refresh_token_reuse_interval = 10
+password_min_length = 8
+
+# Rate limiting for production
+[auth.rate_limit]
+email_sent = 60
+sms_sent = 60

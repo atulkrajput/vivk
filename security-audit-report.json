@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-01-11T20:33:27.114Z",
+  "score": 59,
+  "findings": {
+    "critical": [
+      {
+        "type": "authentication",
+        "description": "NextAuth secret is missing or too short",
+        "recommendation": "Set a secure random string of at least 32 characters for NEXTAUTH_SECRET",
+        "timestamp": "2026-01-11T20:33:27.093Z"
+      }
+    ],
+    "high": [
+      {
+        "type": "configuration",
+        "description": "Missing required environment variable: NEXTAUTH_SECRET",
+        "recommendation": "Set NEXTAUTH_SECRET in production environment",
+        "timestamp": "2026-01-11T20:33:27.093Z"
+      },
+      {
+        "type": "configuration",
+        "description": "Missing required environment variable: ANTHROPIC_API_KEY",
+        "recommendation": "Set ANTHROPIC_API_KEY in production environment",
+        "timestamp": "2026-01-11T20:33:27.093Z"
+      },
+      {
+        "type": "configuration",
+        "description": "Missing required environment variable: RAZORPAY_KEY_SECRET",
+        "recommendation": "Set RAZORPAY_KEY_SECRET in production environment",
+        "timestamp": "2026-01-11T20:33:27.093Z"
+      },
+      {
+        "type": "configuration",
+        "description": "Missing required environment variable: UPSTASH_REDIS_REST_TOKEN",
+        "recommendation": "Set UPSTASH_REDIS_REST_TOKEN in production environment",
+        "timestamp": "2026-01-11T20:33:27.093Z"
+      },
+      {
+        "type": "configuration",
+        "description": "Missing required environment variable: RESEND_API_KEY",
+        "recommendation": "Set RESEND_API_KEY in production environment",
+        "timestamp": "2026-01-11T20:33:27.093Z"
+      }
+    ],
+    "medium": [
+      {
+        "type": "dependency",
+        "description": "Could not complete dependency audit",
+        "recommendation": "Run npm audit manually to check for vulnerabilities",
+        "timestamp": "2026-01-11T20:33:27.090Z"
+      },
+      {
+        "type": "infrastructure",
+        "description": "Security headers not configured in Vercel",
+        "recommendation": "Add security headers to vercel.json configuration",
+        "timestamp": "2026-01-11T20:33:27.108Z"
+      },
+      {
+        "type": "data-protection",
+        "description": "Privacy policy not found",
+        "recommendation": "Create and publish a privacy policy for GDPR compliance",
+        "timestamp": "2026-01-11T20:33:27.110Z"
+      }
+    ],
+    "low": [],
+    "info": []
+  },
+  "summary": {
+    "total": 9,
+    "critical": 1,
+    "high": 5,
+    "medium": 3,
+    "low": 0,
+    "info": 0
+  }
+}
