@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
@@ -13,8 +13,24 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [selectedPlan, setSelectedPlan] = useState('free')
   
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Pre-fill email and plan from URL parameters
+  useEffect(() => {
+    const emailParam = searchParams.get('email')
+    const planParam = searchParams.get('plan')
+    
+    if (emailParam) {
+      setEmail(decodeURIComponent(emailParam))
+    }
+    
+    if (planParam && ['free', 'pro', 'business'].includes(planParam)) {
+      setSelectedPlan(planParam)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

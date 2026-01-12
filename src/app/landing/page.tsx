@@ -1,17 +1,36 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function LandingPage() {
   const [email, setEmail] = useState('')
+  const router = useRouter()
 
   const handleEmailSubmit = () => {
     if (!email || !email.includes('@')) {
       alert('Please enter a valid email address')
       return
     }
-    alert('🎉 Thanks for joining! Check your email for next steps.')
-    setEmail('')
+    // Redirect to registration with email pre-filled
+    router.push(`/register?email=${encodeURIComponent(email)}`)
+  }
+
+  const handleGetStarted = () => {
+    router.push('/register')
+  }
+
+  const handleStartFreeTrial = () => {
+    router.push('/register')
+  }
+
+  const handleStartPro = () => {
+    router.push('/register?plan=pro')
+  }
+
+  const handleContactSales = () => {
+    router.push('/register?plan=business')
   }
 
   return (
@@ -38,7 +57,10 @@ export default function LandingPage() {
               <a href="#pricing" className="text-gray-600 hover:text-blue-600 hidden md:inline">
                 Pricing
               </a>
-              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+              <button 
+                onClick={handleGetStarted}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
                 Get Started Free
               </button>
             </div>
@@ -165,7 +187,10 @@ export default function LandingPage() {
                   <span className="text-gray-700">Basic AI model</span>
                 </li>
               </ul>
-              <button className="w-full bg-gray-100 text-gray-900 py-3 rounded-lg hover:bg-gray-200 transition font-semibold">
+              <button 
+                onClick={handleStartFreeTrial}
+                className="w-full bg-gray-100 text-gray-900 py-3 rounded-lg hover:bg-gray-200 transition font-semibold"
+              >
                 Start Free
               </button>
             </div>
@@ -192,7 +217,10 @@ export default function LandingPage() {
                   <span className="text-gray-700"><strong>Advanced</strong> AI model</span>
                 </li>
               </ul>
-              <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+              <button 
+                onClick={handleStartPro}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+              >
                 Start 7-Day Free Trial
               </button>
             </div>
@@ -214,7 +242,10 @@ export default function LandingPage() {
                   <span className="text-gray-700">Team collaboration</span>
                 </li>
               </ul>
-              <button className="w-full bg-gray-100 text-gray-900 py-3 rounded-lg hover:bg-gray-200 transition font-semibold">
+              <button 
+                onClick={handleContactSales}
+                className="w-full bg-gray-100 text-gray-900 py-3 rounded-lg hover:bg-gray-200 transition font-semibold"
+              >
                 Contact Sales
               </button>
             </div>
