@@ -24,7 +24,7 @@ export default function ChatPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/auth/login')
+      router.push('/login')
     }
   }, [status, router])
 
@@ -313,7 +313,7 @@ export default function ChatPage() {
   }
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/auth/login' })
+    await signOut({ callbackUrl: '/login' })
   }
 
   if (status === 'loading') {

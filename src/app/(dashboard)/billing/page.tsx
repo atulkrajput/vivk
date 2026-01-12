@@ -33,7 +33,7 @@ export default function BillingPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/auth/login')
+      router.push('/login')
     }
   }, [status, router])
 

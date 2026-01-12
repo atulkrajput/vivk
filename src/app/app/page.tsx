@@ -5,7 +5,7 @@ export default async function AppPage() {
   const session = await auth()
   
   if (!session?.user) {
-    redirect('/auth/login')
+    redirect('/login')
   }
 
   // Redirect to chat interface
