@@ -57,8 +57,10 @@ export default function RegisterPage() {
         setSuccess(data.message)
         // Redirect to login after 2 seconds
         setTimeout(() => {
-          router.push('/auth/login')
+          router.push('/login')
         }, 2000)
+      } else if (response.status === 503) {
+        setError('Service is currently being set up. Please try again in a few minutes.')
       } else {
         setError(data.error || 'Registration failed. Please try again.')
       }
