@@ -40,9 +40,6 @@ const nextConfig = {
   // Compression
   compress: true,
   
-  // Static asset optimization
-  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://cdn.vivk.in' : '',
-  
   // Bundle analyzer (enable with ANALYZE=true)
   ...(process.env.ANALYZE === 'true' && {
     webpack: (config) => {
@@ -95,7 +92,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.jsdelivr.net",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: https: https://cdn.vivk.in",
+              "img-src 'self' data: https:",
               "connect-src 'self' https://api.anthropic.com https://api.razorpay.com",
               "frame-src 'self' https://api.razorpay.com",
               "object-src 'none'",
@@ -165,14 +162,6 @@ const nextConfig = {
         destination: '/landing'
       }
     ]
-    
-    // CDN rewrites for production
-    if (process.env.NODE_ENV === 'production') {
-      rewrites.push({
-        source: '/_next/static/:path*',
-        destination: 'https://cdn.vivk.in/_next/static/:path*',
-      })
-    }
     
     return rewrites
   }
