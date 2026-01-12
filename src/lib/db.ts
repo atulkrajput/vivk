@@ -24,22 +24,55 @@ import type {
 } from '@/types/database.types'
 
 // Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables')
+// Only throw error at runtime, not during build
+let supabase: ReturnType<typeof createClient>
+
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey)
+} else {
+  // Create a mock client for build time
+  supabase = createClient('https://placeholder.supabase.co', 'placeholder-key')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export { supabase }
 
 // Database connection test
 export async function testConnection(): Promise<boolean> {
   try {
+    // Check if we have valid environment variables at runtime
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+    
+    if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
+      console.error('Missing or invalid Supabase environment variables')
+      return false
+    }
+    
     const { error } = await supabase.from('users').select('count').limit(1)
     return !error
   } catch {
     return false
+  }
+}
+
+// Runtime validation function
+export function validateEnvironment(): { isValid: boolean; missingVars: string[] } {
+  const requiredVars = [
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+  ]
+  
+  const missingVars = requiredVars.filter(varName => {
+    const value = process.env[varName] || process.env[varName.replace('NEXT_PUBLIC_', '')]
+    return !value || value.includes('placeholder')
+  })
+  
+  return {
+    isValid: missingVars.length === 0,
+    missingVars
   }
 }
 

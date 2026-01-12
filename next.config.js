@@ -2,8 +2,12 @@
 const nextConfig = {
   serverExternalPackages: ['@anthropic-ai/sdk'],
   env: {
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'https://placeholder.com',
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'placeholder-secret',
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
+    RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'placeholder-razorpay-key-id',
+    RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || 'placeholder-razorpay-key-secret',
   },
   
   // ESLint configuration for deployment

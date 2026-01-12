@@ -4,11 +4,37 @@ import crypto from 'crypto'
 import { paymentDb, subscriptionDb, userDb } from './db'
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from './subscriptions'
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-})
+// Lazy initialization of Razorpay instance
+let razorpayInstance: Razorpay | null = null
+
+function getRazorpayInstance(): Razorpay {
+  if (!razorpayInstance) {
+    const keyId = process.env.RAZORPAY_KEY_ID
+    const keySecret = process.env.RAZORPAY_KEY_SECRET
+    
+    if (!keyId || !keySecret) {
+      throw new Error('Razorpay credentials not configured')
+    }
+    
+    razorpayInstance = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    })
+  }
+  
+  return razorpayInstance
+}
+
+// Environment validation
+export function validatePaymentEnvironment(): { isValid: boolean; missingVars: string[] } {
+  const requiredVars = ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET']
+  const missingVars = requiredVars.filter(varName => !process.env[varName])
+  
+  return {
+    isValid: missingVars.length === 0,
+    missingVars
+  }
+}
 
 export interface PaymentIntent {
   id: string
@@ -55,6 +81,7 @@ export const paymentService = {
     receipt?: string
   ): Promise<PaymentIntent | null> {
     try {
+      const razorpay = getRazorpayInstance()
       const order = await razorpay.orders.create({
         amount: amount, // Amount in paise
         currency,
@@ -184,6 +211,7 @@ export const paymentService = {
   // Get payment details from Razorpay
   async getPaymentDetails(paymentId: string): Promise<any> {
     try {
+      const razorpay = getRazorpayInstance()
       const payment = await razorpay.payments.fetch(paymentId)
       return payment
     } catch (error) {
@@ -203,6 +231,7 @@ export const subscriptionService = {
     period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly'
   ): Promise<any> {
     try {
+      const razorpay = getRazorpayInstance()
       const plan = await razorpay.plans.create({
         period,
         interval,
@@ -226,6 +255,7 @@ export const subscriptionService = {
     customerId?: string
   ): Promise<SubscriptionIntent | null> {
     try {
+      const razorpay = getRazorpayInstance()
       const subscriptionData: any = {
         plan_id: planId,
         total_count: 12, // 12 months
@@ -270,6 +300,7 @@ export const subscriptionService = {
   // Cancel subscription
   async cancelSubscription(subscriptionId: string): Promise<boolean> {
     try {
+      const razorpay = getRazorpayInstance()
       await razorpay.subscriptions.cancel(subscriptionId)
       return true
     } catch (error) {
