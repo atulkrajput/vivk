@@ -27,23 +27,21 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const clientIP = getClientIP(request)
 
-  // Public routes - no auth needed
-  const publicRoutes = ['/', '/landing', '/login', '/register', '/reset-password', '/maintenance']
-  const publicApiRoutes = ['/api/auth', '/api/health', '/api/debug', '/api/payments/webhook']
+  // Skip static assets
+  if (pathname.startsWith('/_next') || pathname.includes('.')) {
+    return NextResponse.next()
+  }
 
-  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
-  const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
-  const isStaticAsset = pathname.startsWith('/_next') || pathname.includes('.')
+  // Public routes - no auth or rate limiting needed
+  const isPublicPage = ['/', '/landing', '/login', '/register', '/reset-password', '/maintenance']
+    .some(route => pathname === route)
+  const isAuthApi = pathname.startsWith('/api/auth')
+  const isPublicApi = pathname.startsWith('/api/health') || pathname.startsWith('/api/debug') || pathname.startsWith('/api/payments/webhook')
 
-  // Skip middleware for static assets
-  if (isStaticAsset) return NextResponse.next()
-
-  // Rate limiting for API routes
-  if (pathname.startsWith('/api/')) {
-    const limit = pathname.startsWith('/api/auth/') ? 10 : 60
-    const window = pathname.startsWith('/api/auth/') ? 60000 : 60000
-
-    if (!checkRateLimit(`${clientIP}:${pathname.split('/').slice(0, 3).join('/')}`, limit, window)) {
+  // No rate limiting on auth API routes (NextAuth needs multiple calls)
+  // Only rate limit non-auth API routes
+  if (pathname.startsWith('/api/') && !isAuthApi && !isPublicApi) {
+    if (!checkRateLimit(`${clientIP}:api`, 100, 60000)) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
         { status: 429 }
@@ -51,8 +49,10 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Allow public routes
-  if (isPublicRoute || isPublicApiRoute) return NextResponse.next()
+  // Allow all public routes and auth API
+  if (isPublicPage || isAuthApi || isPublicApi) {
+    return NextResponse.next()
+  }
 
   // For protected routes, check for session token
   const sessionToken = request.cookies.get('next-auth.session-token')?.value ||
