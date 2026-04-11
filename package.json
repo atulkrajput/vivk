@@ -26,7 +26,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@auth/supabase-adapter": "^1.7.2",
-    "@supabase/supabase-js": "^2.48.1",
     "@upstash/redis": "^1.36.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
@@ -35,6 +34,7 @@
     "isomorphic-dompurify": "^2.35.0",
     "jose": "^5.9.6",
     "lucide-react": "^0.562.0",
+    "mysql2": "^3.22.0",
     "nanoid": "^5.0.9",
     "next": "^15.1.6",
     "next-auth": "5.0.0-beta.25",

@@ -1,13 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['@anthropic-ai/sdk'],
+  serverExternalPackages: ['@anthropic-ai/sdk', 'mysql2'],
   env: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'https://placeholder.com',
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'placeholder-secret',
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
-    RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'placeholder-razorpay-key-id',
-    RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || 'placeholder-razorpay-key-secret',
   },
   
   // ESLint configuration for deployment
@@ -89,7 +85,8 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.jsdelivr.net",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://checkout.razorpay.com https://cdn.jsdelivr.net",
+              "script-src-elem 'self' 'unsafe-inline' blob: https://checkout.razorpay.com https://cdn.jsdelivr.net",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https:",

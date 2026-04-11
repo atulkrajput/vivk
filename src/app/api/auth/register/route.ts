@@ -17,12 +17,13 @@ export async function POST(request: NextRequest) {
     if (!envCheck.isValid) {
       console.error('Environment variables not configured:', envCheck.missingVars)
       return NextResponse.json(
-        { error: "Service temporarily unavailable. Please try again later." },
+        { error: "Service is currently being set up. Please try again in a few minutes." },
         { status: 503 }
       )
     }
 
     const body = await request.json()
+    console.log('Registration attempt for email:', body.email?.substring(0, 3) + '***')
     
     // Basic validation
     const validatedBody = registerSchema.parse(body)
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
     try {
       const existingUser = await userDb.getByEmail(sanitizedEmail)
       if (existingUser) {
+        console.log('User already exists:', sanitizedEmail.substring(0, 3) + '***')
         return NextResponse.json(
           { error: "An account with this email already exists." },
           { status: 400 }
@@ -61,6 +63,7 @@ export async function POST(request: NextRequest) {
     
     // Create user
     try {
+      console.log('Attempting to create user:', sanitizedEmail.substring(0, 3) + '***')
       const user = await userDb.create({
         email: sanitizedEmail,
         password_hash: passwordHash,
@@ -70,9 +73,11 @@ export async function POST(request: NextRequest) {
       })
       
       if (!user) {
-        throw new Error('Failed to create user')
+        console.error('User creation returned null')
+        throw new Error('Failed to create user - null returned')
       }
       
+      console.log('User created successfully:', user.id)
       return NextResponse.json({
         success: true,
         message: "Account created successfully! You can now sign in.",
@@ -94,6 +99,7 @@ export async function POST(request: NextRequest) {
     console.error('Registration error:', error)
     
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors)
       return NextResponse.json(
         { error: error.errors[0].message },
         { status: 400 }

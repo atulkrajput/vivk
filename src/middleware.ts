@@ -1,207 +1,80 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { auth } from '@/lib/auth'
-import { applySecurityHeaders, validateRequestOrigin, logSecureError } from '@/lib/security'
-import { isMaintenanceMode, getMaintenanceMessage } from '@/lib/error-handling'
-import { 
-  rateLimitMiddleware, 
-  getClientIdentifier, 
-  getUserIdentifier,
-  type RateLimitType 
-} from '@/lib/rate-limiting'
 
-// Rate limiting store (in production, use Redis)
+// Simple in-memory rate limiting for Edge Runtime
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
 
-// Rate limiting function (fallback for when Redis is unavailable)
 function checkRateLimit(identifier: string, limit: number, windowMs: number): boolean {
   const now = Date.now()
-  const key = identifier
-  const record = rateLimitStore.get(key)
-  
+  const record = rateLimitStore.get(identifier)
+
   if (!record || now > record.resetTime) {
-    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs })
+    rateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs })
     return true
   }
-  
-  if (record.count >= limit) {
-    return false
-  }
-  
+
+  if (record.count >= limit) return false
   record.count++
   return true
 }
 
+function getClientIP(request: NextRequest): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') || 'unknown'
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const clientIP = getClientIdentifier(request)
-  
-  try {
-    // Check maintenance mode first (except for health check and admin endpoints)
-    if (isMaintenanceMode() && 
-        !pathname.startsWith('/api/health') && 
-        !pathname.startsWith('/api/admin/maintenance')) {
-      
-      // For API routes, return JSON error
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          {
-            error: getMaintenanceMessage(),
-            code: 'MAINTENANCE_MODE',
-            retryable: true,
-            timestamp: new Date().toISOString()
-          },
-          { status: 503 }
-        )
-      }
-      
-      // For web routes, redirect to maintenance page
-      const maintenanceUrl = new URL('/maintenance', request.url)
-      return NextResponse.redirect(maintenanceUrl)
-    }
+  const clientIP = getClientIP(request)
 
-    // Create response with security headers
-    let response = NextResponse.next()
-    response = applySecurityHeaders(response)
-    
-    // Validate request origin for state-changing operations
-    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)) {
-      if (!validateRequestOrigin(request)) {
-        logSecureError(new Error('Invalid request origin'), {
-          method: request.method,
-          pathname,
-          origin: request.headers.get('origin'),
-          referer: request.headers.get('referer')
-        })
-        return new NextResponse('Forbidden', { status: 403 })
-      }
-    }
-    
-    // Public routes that don't require authentication
-    const publicRoutes = [
-      '/',
-      '/landing',
-      '/auth/login',
-      '/auth/register',
-      '/auth/reset-password',
-      '/auth/error',
-      '/maintenance'
-    ]
-    
-    // API routes that don't require authentication
-    const publicApiRoutes = [
-      '/api/auth',
-      '/api/health',
-      '/api/payments/webhook' // Webhook needs special handling
-    ]
-    
-    // Check if route is public
-    const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route))
-    const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
-    
-    // Apply Redis-based rate limiting based on route type
-    let rateLimitResponse: NextResponse | null = null
-    
-    if (pathname.startsWith('/api/auth/')) {
-      // Stricter rate limiting for auth endpoints
-      rateLimitResponse = await rateLimitMiddleware(request, clientIP, 'AUTH')
-    } else if (pathname.startsWith('/api/payments/')) {
-      // Rate limiting for payment endpoints
-      rateLimitResponse = await rateLimitMiddleware(request, clientIP, 'PAYMENT')
-    } else if (pathname.startsWith('/api/admin/')) {
-      // Rate limiting for admin endpoints
-      rateLimitResponse = await rateLimitMiddleware(request, clientIP, 'ADMIN')
-    } else if (pathname.startsWith('/api/')) {
-      // General API rate limiting
-      rateLimitResponse = await rateLimitMiddleware(request, clientIP, 'API')
-    }
-    
-    // If rate limit exceeded, return the rate limit response
-    if (rateLimitResponse) {
-      return rateLimitResponse
-    }
-    
-    // Allow public routes
-    if (isPublicRoute || isPublicApiRoute) {
-      return response
-    }
-    
-    // Check authentication for protected routes
-    const session = await auth()
-    
-    // Redirect to login if not authenticated
-    if (!session?.user) {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          {
-            error: 'Please sign in to access this resource.',
-            code: 'UNAUTHORIZED',
-            retryable: false,
-            action: 'Sign in to your account',
-            timestamp: new Date().toISOString()
-          },
-          { status: 401 }
-        )
-      }
-      
-      const loginUrl = new URL('/auth/login', request.url)
-      loginUrl.searchParams.set('callbackUrl', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
-    
-    // Additional user-specific rate limiting for authenticated users
-    if (session.user.id) {
-      const userIdentifier = getUserIdentifier(session.user.id)
-      
-      if (pathname.startsWith('/api/chat/')) {
-        // Chat-specific rate limiting based on subscription tier
-        const rateLimitType: RateLimitType = session.user.subscriptionTier === 'free' ? 'CHAT_FREE' : 'CHAT_PRO'
-        const chatRateLimitResponse = await rateLimitMiddleware(request, userIdentifier, rateLimitType)
-        
-        if (chatRateLimitResponse) {
-          return chatRateLimitResponse
-        }
-      } else if (pathname.startsWith('/api/user/') || pathname.startsWith('/api/subscriptions/')) {
-        // User API rate limiting
-        const userApiRateLimitResponse = await rateLimitMiddleware(request, userIdentifier, 'USER_API')
-        
-        if (userApiRateLimitResponse) {
-          return userApiRateLimitResponse
-        }
-      }
-    }
-    
-    return response
-    
-  } catch (error) {
-    logSecureError(error as Error, { pathname, method: request.method, clientIP })
-    
-    // Return appropriate error response
-    if (pathname.startsWith('/api/')) {
+  // Public routes - no auth needed
+  const publicRoutes = ['/', '/landing', '/login', '/register', '/reset-password', '/maintenance']
+  const publicApiRoutes = ['/api/auth', '/api/health', '/api/debug', '/api/payments/webhook']
+
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+  const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
+  const isStaticAsset = pathname.startsWith('/_next') || pathname.includes('.')
+
+  // Skip middleware for static assets
+  if (isStaticAsset) return NextResponse.next()
+
+  // Rate limiting for API routes
+  if (pathname.startsWith('/api/')) {
+    const limit = pathname.startsWith('/api/auth/') ? 10 : 60
+    const window = pathname.startsWith('/api/auth/') ? 60000 : 60000
+
+    if (!checkRateLimit(`${clientIP}:${pathname.split('/').slice(0, 3).join('/')}`, limit, window)) {
       return NextResponse.json(
-        {
-          error: 'Internal server error. Please try again.',
-          code: 'INTERNAL_SERVER_ERROR',
-          retryable: true,
-          timestamp: new Date().toISOString()
-        },
-        { status: 500 }
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
       )
     }
-    
-    return new NextResponse('Internal Server Error', { status: 500 })
   }
+
+  // Allow public routes
+  if (isPublicRoute || isPublicApiRoute) return NextResponse.next()
+
+  // For protected routes, check for session token
+  const sessionToken = request.cookies.get('next-auth.session-token')?.value ||
+    request.cookies.get('__Secure-next-auth.session-token')?.value
+
+  if (!sessionToken) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'Authentication required', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      )
+    }
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('callbackUrl', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public assets
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
