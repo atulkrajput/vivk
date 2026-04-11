@@ -30,9 +30,13 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
+        console.error('Login error:', result.error)
         setError('Invalid email or password. Please try again.')
-      } else {
+      } else if (result?.ok) {
         router.push(callbackUrl)
+        router.refresh()
+      } else {
+        setError('Login failed. Please try again.')
       }
     } catch (error) {
       setError('An error occurred. Please try again.')
@@ -54,7 +58,7 @@ export default function LoginPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
             <Link
-              href="/auth/register"
+              href="/register"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               create a new account
@@ -108,7 +112,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-between">
             <div className="text-sm">
               <Link
-                href="/auth/reset-password"
+                href="/reset-password"
                 className="font-medium text-blue-600 hover:text-blue-500"
               >
                 Forgot your password?

@@ -26,25 +26,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Get user from database
           const user = await userDb.getByEmail(email)
           if (!user) {
+            console.log('Auth: user not found for email')
             return null
           }
           
           // Verify password
           const isValidPassword = await compare(password, user.password_hash)
           if (!isValidPassword) {
+            console.log('Auth: invalid password')
             return null
           }
           
-          // Check if email is verified
-          if (!user.email_verified) {
+          // Check if email is verified (MySQL returns 0/1 for TINYINT)
+          const isVerified = user.email_verified === true || user.email_verified === 1 || user.email_verified as any === '1'
+          if (!isVerified) {
+            console.log('Auth: email not verified')
             throw new Error("Please verify your email before signing in")
           }
+          
+          console.log('Auth: login successful for user', user.id)
           
           // Return user object for session
           return {
             id: user.id,
             email: user.email,
-            emailVerified: user.email_verified,
+            emailVerified: true,
             subscriptionTier: user.subscription_tier,
             subscriptionStatus: user.subscription_status
           }
