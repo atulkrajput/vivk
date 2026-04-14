@@ -89,10 +89,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     
     async redirect({ url, baseUrl }) {
-      // Redirect to dashboard after successful login
+      // Redirect to chat after successful login
       if (url.startsWith("/")) return `${baseUrl}${url}`
       else if (new URL(url).origin === baseUrl) return url
-      return `${baseUrl}/app`
+      return `${baseUrl}/chat`
     }
   },
   
@@ -104,6 +104,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   jwt: {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  
+  trustHost: true,
   
   secret: process.env.NEXTAUTH_SECRET,
 })

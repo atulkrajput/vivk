@@ -17,19 +17,8 @@
   ],
   "rewrites": [
     {
-      "source": "/app/:path*",
-      "destination": "/chat/:path*"
-    },
-    {
       "source": "/",
       "destination": "/landing"
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/dashboard/:path*",
-      "destination": "/app/dashboard/:path*",
-      "permanent": true
     }
   ],
   "headers": [
@@ -38,7 +27,7 @@
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://vivk.in"
+          "value": "*"
         },
         {
           "key": "Access-Control-Allow-Methods",
@@ -83,8 +72,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
