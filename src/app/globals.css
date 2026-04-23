@@ -29,6 +29,36 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+/* Custom scrollbar for dark theme */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Chat area scrollbar */
+div[class*="overflow-y-auto"]::-webkit-scrollbar {
+  width: 6px;
+}
+div[class*="overflow-y-auto"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+div[class*="overflow-y-auto"]::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+}
+div[class*="overflow-y-auto"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .gradient-bg {
   background: linear-gradient(135deg, #0066CC 0%, #0052A3 100%);
 }

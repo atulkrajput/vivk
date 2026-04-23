@@ -54,8 +54,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // For protected routes, check for session token
-  const sessionToken = request.cookies.get('next-auth.session-token')?.value ||
+  // Check for session token (NextAuth v5/Auth.js uses 'authjs.' prefix)
+  const sessionToken = request.cookies.get('authjs.session-token')?.value ||
+    request.cookies.get('__Secure-authjs.session-token')?.value ||
+    request.cookies.get('next-auth.session-token')?.value ||
     request.cookies.get('__Secure-next-auth.session-token')?.value
 
   if (!sessionToken) {

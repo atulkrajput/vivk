@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Button } from '@/components/ui/Button'
 
 interface MessageInputProps {
   onSendMessage: (content: string) => Promise<void>
@@ -12,24 +11,22 @@ interface MessageInputProps {
 export function MessageInput({ 
   onSendMessage, 
   disabled = false, 
-  placeholder = "Type your message..." 
+  placeholder = "Message VIVK..." 
 }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Auto-resize textarea
   useEffect(() => {
     const textarea = textareaRef.current
     if (textarea) {
       textarea.style.height = 'auto'
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
     }
   }, [message])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
     if (!message.trim() || disabled || isSubmitting) return
 
     const messageToSend = message.trim()
@@ -39,7 +36,6 @@ export function MessageInput({
     try {
       await onSendMessage(messageToSend)
     } catch (error) {
-      // Restore message on error
       setMessage(messageToSend)
     } finally {
       setIsSubmitting(false)
@@ -53,11 +49,12 @@ export function MessageInput({
     }
   }
 
+  const canSend = message.trim().length > 0 && !disabled && !isSubmitting
+
   return (
-    <form onSubmit={handleSubmit} className="p-4">
-      <div className="flex items-end space-x-3">
-        {/* Message textarea */}
-        <div className="flex-1 relative">
+    <div className="px-4 pt-2 pb-1">
+      <form onSubmit={handleSubmit}>
+        <div className="relative bg-white/[0.04] border border-white/[0.08] rounded-2xl hover:border-white/[0.12] focus-within:border-blue-500/40 focus-within:bg-white/[0.06] transition-all">
           <textarea
             ref={textareaRef}
             value={message}
@@ -67,52 +64,49 @@ export function MessageInput({
             disabled={disabled || isSubmitting}
             rows={1}
             className="
-              w-full px-4 py-3 pr-12 text-sm
-              border border-gray-300 rounded-2xl
+              w-full bg-transparent text-gray-200 text-[14px]
+              px-4 py-3.5 pr-14
               resize-none overflow-hidden
-              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-              disabled:opacity-50 disabled:cursor-not-allowed
-              placeholder-gray-500
+              focus:outline-none
+              disabled:opacity-40 disabled:cursor-not-allowed
+              placeholder-gray-600
             "
-            style={{ minHeight: '48px', maxHeight: '120px' }}
+            style={{ minHeight: '52px', maxHeight: '200px' }}
           />
           
-          {/* Character count for long messages */}
+          {/* Send button */}
+          <button
+            type="submit"
+            disabled={!canSend}
+            className={`
+              absolute right-2.5 bottom-2.5 w-9 h-9 rounded-xl
+              flex items-center justify-center transition-all duration-200
+              ${canSend
+                ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20'
+                : 'bg-white/[0.04] text-gray-600'
+              }
+            `}
+          >
+            {isSubmitting ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+              </svg>
+            )}
+          </button>
+
+          {/* Character count */}
           {message.length > 500 && (
-            <div className="absolute bottom-1 right-12 text-xs text-gray-400">
+            <div className="absolute bottom-2.5 right-14 text-[10px] text-gray-600">
               {message.length}/2000
             </div>
           )}
         </div>
-
-        {/* Send button */}
-        <Button
-          type="submit"
-          disabled={!message.trim() || disabled || isSubmitting}
-          size="md"
-          className="
-            h-12 w-12 rounded-full p-0 flex-shrink-0
-            bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300
-            transition-colors duration-200
-          "
-        >
-          {isSubmitting ? (
-            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          )}
-        </Button>
-      </div>
-      
-      {/* Help text */}
-      <div className="mt-2 text-xs text-gray-500 px-1">
-        Press Enter to send, Shift+Enter for new line
-      </div>
-    </form>
+      </form>
+    </div>
   )
 }

@@ -33,6 +33,13 @@ interface UsageLimitStatus {
   limitMessage?: string
 }
 
+const SUGGESTIONS = [
+  { icon: '✍️', title: 'Write content', desc: 'Blog posts, emails, social media' },
+  { icon: '💻', title: 'Help me code', desc: 'Debug, explain, or write code' },
+  { icon: '📊', title: 'Analyze data', desc: 'Summarize, compare, or extract insights' },
+  { icon: '💡', title: 'Brainstorm ideas', desc: 'Creative solutions and strategies' },
+]
+
 export function ChatInterface({ 
   conversation, 
   messages, 
@@ -59,18 +66,12 @@ export function ChatInterface({
 
   const { error, handleError, clearError: clearGeneralError, retry } = useErrorHandler({
     onError: (errorInfo) => {
-      // Handle specific error types
-      if (errorInfo.code === 'DAILY_LIMIT_REACHED') {
-        setShowUsageWarning(true)
-      }
+      if (errorInfo.code === 'DAILY_LIMIT_REACHED') setShowUsageWarning(true)
     }
   })
 
-  // Fetch usage status on component mount and after sending messages
   useEffect(() => {
-    if (session?.user?.subscriptionTier === 'free') {
-      fetchUsageStatus()
-    }
+    if (session?.user?.subscriptionTier === 'free') fetchUsageStatus()
   }, [session, messages.length])
 
   const fetchUsageStatus = async () => {
@@ -79,21 +80,15 @@ export function ChatInterface({
       if (response.ok) {
         const data = await response.json()
         setUsageStatus(data.limits)
-        
-        // Show warning if approaching or at limit
-        if (data.limits.isApproachingLimit || data.limits.hasReachedLimit) {
-          setShowUsageWarning(true)
-        }
+        if (data.limits.isApproachingLimit || data.limits.hasReachedLimit) setShowUsageWarning(true)
       } else {
-        const errorData = await response.json()
-        handleError(errorData)
+        handleError(await response.json())
       }
     } catch (networkError) {
       handleError(networkError)
     }
   }
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isStreaming, streamingContent])
@@ -101,8 +96,6 @@ export function ChatInterface({
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading || isStreaming) return
     if (!conversation?.id) return
-
-    // Check usage limits before sending
     if (session?.user?.subscriptionTier === 'free' && usageStatus?.hasReachedLimit) {
       setShowUsageWarning(true)
       return
@@ -112,19 +105,13 @@ export function ChatInterface({
     clearGeneralError()
 
     if (enableStreaming) {
-      // Use streaming for real-time responses
       await sendStreamingMessage(
         conversation.id,
         content.trim(),
-        // onUserMessage
         (userMessage) => {
           onUpdateMessages([...messages, userMessage])
-          // Refresh usage status after sending
-          if (session?.user?.subscriptionTier === 'free') {
-            setTimeout(fetchUsageStatus, 1000)
-          }
+          if (session?.user?.subscriptionTier === 'free') setTimeout(fetchUsageStatus, 1000)
         },
-        // onAIChunk
         (chunk, fullContent) => {
           if (!streamingMessage) {
             const tempMessage: Message = {
@@ -136,50 +123,29 @@ export function ChatInterface({
             }
             setStreamingMessage(tempMessage)
           } else {
-            setStreamingMessage(prev => prev ? {
-              ...prev,
-              content: fullContent
-            } : null)
+            setStreamingMessage(prev => prev ? { ...prev, content: fullContent } : null)
           }
         },
-        // onAIComplete
         (aiMessage, updatedConversation) => {
-          // Replace streaming message with final message
           const newMessages = [...messages]
           if (streamingMessage) {
-            // Find and replace the streaming message
             const streamingIndex = newMessages.findIndex(m => m.id === streamingMessage.id)
-            if (streamingIndex >= 0) {
-              newMessages[streamingIndex] = aiMessage
-            } else {
-              newMessages.push(aiMessage)
-            }
+            if (streamingIndex >= 0) newMessages[streamingIndex] = aiMessage
+            else newMessages.push(aiMessage)
           } else {
             newMessages.push(aiMessage)
           }
-          
           onUpdateMessages(newMessages)
           setStreamingMessage(null)
-          
-          if (updatedConversation) {
-            onUpdateConversation(updatedConversation)
-          }
+          if (updatedConversation) onUpdateConversation(updatedConversation)
         },
-        // onError
-        (error) => {
-          handleError(error)
-          setStreamingMessage(null)
-        }
+        (error) => { handleError(error); setStreamingMessage(null) }
       )
     } else {
-      // Fallback to regular message sending
       try {
         setIsTyping(true)
         await onSendMessage(content.trim())
-        // Refresh usage status after sending
-        if (session?.user?.subscriptionTier === 'free') {
-          setTimeout(fetchUsageStatus, 1000)
-        }
+        if (session?.user?.subscriptionTier === 'free') setTimeout(fetchUsageStatus, 1000)
       } catch (error) {
         handleError(error)
       } finally {
@@ -188,71 +154,32 @@ export function ChatInterface({
     }
   }
 
-  const handleUpgrade = () => {
-    window.location.href = '/dashboard/billing'
+  const handleUpgrade = () => { window.location.href = '/dashboard/billing' }
+  const handleRetryMessage = () => {
+    retry(async () => { if (session?.user?.subscriptionTier === 'free') await fetchUsageStatus() })
   }
 
-  const handleRetryMessage = () => {
-    // Retry the last failed operation
-    retry(async () => {
-      if (session?.user?.subscriptionTier === 'free') {
-        await fetchUsageStatus()
-      }
-    })
-  }
+  const modelName = session?.user?.subscriptionTier === 'free' ? 'Haiku' : 'Sonnet'
+  const hasMessages = messages.length > 0 || !!streamingMessage
 
   return (
     <ChatErrorBoundary>
-      <div className="flex flex-col h-full bg-white">
-        {/* Chat Header */}
-        <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                {conversation?.title || 'New Conversation'}
-              </h2>
-              <p className="text-sm text-gray-500">
-                {session?.user?.subscriptionTier === 'free' ? 'Claude Haiku' : 'Claude Sonnet'} • 
-                {session?.user?.subscriptionTier === 'free' ? ' Free Plan' : ' Pro Plan'}
-                {enableStreaming && ' • Streaming'}
-              </p>
-            </div>
-            
-            {/* Usage indicator for free users */}
-            {session?.user?.subscriptionTier === 'free' && usageStatus && (
-              <div className="text-sm text-gray-500">
-                Messages today: {usageStatus.todayUsage}/{usageStatus.dailyLimit}
-                {usageStatus.remainingMessages > 0 && (
-                  <span className="ml-2 text-green-600">
-                    ({usageStatus.remainingMessages} remaining)
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Error Display */}
+      <div className="flex flex-col h-full bg-[#0f0f17]">
+        {/* Error displays */}
         {error && (
-          <div className="flex-shrink-0 px-4 pt-4">
+          <div className="flex-shrink-0 px-4 pt-3 max-w-3xl mx-auto w-full">
             {error.code === 'DAILY_LIMIT_REACHED' ? (
               <DailyLimitErrorDisplay onUpgrade={handleUpgrade} />
             ) : error.code === 'AI_SERVICE_UNAVAILABLE' || error.code === 'AI_GENERATION_FAILED' ? (
               <AIServiceErrorDisplay onRetry={handleRetryMessage} />
             ) : (
-              <ErrorDisplay
-                error={error}
-                onRetry={error.retryable ? handleRetryMessage : undefined}
-                onDismiss={clearGeneralError}
-                variant="banner"
-              />
+              <ErrorDisplay error={error} onRetry={error.retryable ? handleRetryMessage : undefined} onDismiss={clearGeneralError} variant="banner" />
             )}
           </div>
         )}
 
-        {/* Usage Warning */}
         {showUsageWarning && usageStatus && (usageStatus.warningMessage || usageStatus.limitMessage) && (
-          <div className="flex-shrink-0 px-4 pt-4">
+          <div className="flex-shrink-0 px-4 pt-3 max-w-3xl mx-auto w-full">
             <UsageWarning
               type={usageStatus.hasReachedLimit ? 'limit' : 'warning'}
               message={usageStatus.limitMessage || usageStatus.warningMessage || ''}
@@ -263,81 +190,85 @@ export function ChatInterface({
           </div>
         )}
 
-        {/* Legacy streaming error display (keeping for backward compatibility) */}
         {streamingError && !error && (
-          <div className="flex-shrink-0 bg-red-50 border-l-4 border-red-400 p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{streamingError}</p>
-                <button
-                  onClick={clearError}
-                  className="mt-2 text-sm text-red-600 hover:text-red-500"
-                >
-                  Dismiss
-                </button>
-              </div>
+          <div className="flex-shrink-0 mx-4 mt-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl max-w-3xl mx-auto w-full">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-red-400">{streamingError}</p>
+              <button onClick={clearError} className="text-red-400/60 hover:text-red-400 ml-3 text-xs">Dismiss</button>
             </div>
           </div>
         )}
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          {messages.length === 0 && !streamingMessage ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto">
+          {!hasMessages ? (
+            /* Empty state */
+            <div className="flex flex-col items-center justify-center h-full px-4">
+              <div className="max-w-lg w-full text-center">
+                <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/[0.06] flex items-center justify-center">
+                  <svg className="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Start a conversation
-                </h3>
-                <p className="text-gray-500 max-w-sm">
-                  Ask me anything! I'm here to help with your questions, tasks, and creative projects.
+                <h2 className="text-xl font-semibold text-white mb-2">
+                  How can I help you today?
+                </h2>
+                <p className="text-sm text-gray-500 mb-8">
+                  Using Claude {modelName} · {session?.user?.subscriptionTier === 'free' ? 'Free' : 'Pro'} Plan
                 </p>
+
+                {/* Suggestion cards */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {SUGGESTIONS.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSendMessage(s.title)}
+                      className="text-left p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all group"
+                    >
+                      <span className="text-base">{s.icon}</span>
+                      <p className="text-[13px] font-medium text-gray-300 mt-1.5 group-hover:text-white transition-colors">{s.title}</p>
+                      <p className="text-[11px] text-gray-600 mt-0.5">{s.desc}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
-            <>
+            /* Messages */
+            <div className="max-w-3xl mx-auto w-full px-4 py-6 space-y-1">
               {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                  isUser={message.role === 'user'}
-                />
+                <ChatMessage key={message.id} message={message} isUser={message.role === 'user'} />
               ))}
-              
-              {/* Streaming message */}
-              {streamingMessage && (
-                <StreamingMessage
-                  message={streamingMessage}
-                  isStreaming={isStreaming}
-                />
-              )}
-              
-              {/* Typing indicator for non-streaming mode */}
+              {streamingMessage && <StreamingMessage message={streamingMessage} isStreaming={isStreaming} />}
               {isTyping && !isStreaming && <TypingIndicator />}
-              
-              {/* Scroll anchor */}
               <div ref={messagesEndRef} />
-            </>
+            </div>
           )}
         </div>
 
-        {/* Message Input */}
-        <div className="flex-shrink-0 border-t border-gray-200 bg-white">
-          <MessageInput
-            onSendMessage={handleSendMessage}
-            disabled={isLoading || isStreaming || (usageStatus?.hasReachedLimit && session?.user?.subscriptionTier === 'free')}
-            placeholder={
-              usageStatus?.hasReachedLimit && session?.user?.subscriptionTier === 'free'
-                ? "Daily limit reached. Upgrade to Pro for unlimited messages."
-                : session?.user?.subscriptionTier === 'free' 
-                ? `Type your message... (${usageStatus?.remainingMessages || 0} messages remaining today)`
-                : "Type your message..."
-            }
-          />
+        {/* Input area */}
+        <div className="flex-shrink-0">
+          <div className="max-w-3xl mx-auto w-full">
+            <MessageInput
+              onSendMessage={handleSendMessage}
+              disabled={isLoading || isStreaming || (usageStatus?.hasReachedLimit && session?.user?.subscriptionTier === 'free')}
+              placeholder={
+                usageStatus?.hasReachedLimit && session?.user?.subscriptionTier === 'free'
+                  ? "Daily limit reached. Upgrade to Pro for unlimited messages."
+                  : "Message VIVK..."
+              }
+            />
+            {/* Footer info */}
+            <div className="text-center pb-3 px-4">
+              <p className="text-[11px] text-gray-600">
+                {session?.user?.subscriptionTier === 'free' && usageStatus
+                  ? `${usageStatus.remainingMessages} of ${usageStatus.dailyLimit} messages remaining today · `
+                  : ''
+                }
+                VIVK can make mistakes. Verify important information.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </ChatErrorBoundary>

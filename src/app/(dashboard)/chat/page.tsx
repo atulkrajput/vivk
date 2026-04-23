@@ -11,24 +11,22 @@ export default function ChatPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   
-  // State management
   const [conversations, setConversations] = useState<ConversationWithMessageCount[]>([])
   const [allConversations, setAllConversations] = useState<ConversationWithMessageCount[]>([])
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     }
   }, [status, router])
 
-  // Load conversations on mount
   useEffect(() => {
     if (session?.user) {
       loadConversations()
@@ -38,9 +36,7 @@ export default function ChatPage() {
   const loadConversations = async (search?: string) => {
     try {
       const url = new URL('/api/chat/conversations', window.location.origin)
-      if (search) {
-        url.searchParams.set('search', search)
-      }
+      if (search) url.searchParams.set('search', search)
       
       const response = await fetch(url.toString())
       if (response.ok) {
@@ -54,7 +50,6 @@ export default function ChatPage() {
           setConversations(conversationList)
         }
         
-        // If no current conversation and conversations exist, select the first one
         if (!currentConversation && conversationList.length > 0) {
           selectConversation(conversationList[0].id)
         }
@@ -68,8 +63,8 @@ export default function ChatPage() {
   const selectConversation = async (conversationId: string) => {
     try {
       setIsLoading(true)
+      setIsMobileSidebarOpen(false)
       
-      // Load conversation details
       const [conversationResponse, messagesResponse] = await Promise.all([
         fetch(`/api/chat/conversations/${conversationId}`),
         fetch(`/api/chat/conversations/${conversationId}/messages`)
@@ -78,7 +73,6 @@ export default function ChatPage() {
       if (conversationResponse.ok && messagesResponse.ok) {
         const conversationData = await conversationResponse.json()
         const messagesData = await messagesResponse.json()
-        
         setCurrentConversation(conversationData.conversation)
         setMessages(messagesData.messages || [])
         setError(null)
@@ -96,26 +90,20 @@ export default function ChatPage() {
   const createNewConversation = async () => {
     try {
       setIsLoading(true)
-      
       const response = await fetch('/api/chat/conversations', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       })
 
       if (response.ok) {
         const data = await response.json()
         const newConversation = data.conversation
-        
-        // Add to conversations list
         setConversations(prev => [newConversation, ...prev])
         setAllConversations(prev => [newConversation, ...prev])
-        
-        // Select the new conversation
         setCurrentConversation(newConversation)
         setMessages([])
         setError(null)
+        setIsMobileSidebarOpen(false)
       } else {
         setError('Failed to create new conversation')
       }
@@ -134,20 +122,14 @@ export default function ChatPage() {
       })
 
       if (response.ok) {
-        // Remove from conversations list
         setConversations(prev => prev.filter(conv => conv.id !== conversationId))
         setAllConversations(prev => prev.filter(conv => conv.id !== conversationId))
         
-        // If this was the current conversation, clear it
         if (currentConversation?.id === conversationId) {
           setCurrentConversation(null)
           setMessages([])
-          
-          // Select the first remaining conversation if any
           const remaining = conversations.filter(conv => conv.id !== conversationId)
-          if (remaining.length > 0) {
-            selectConversation(remaining[0].id)
-          }
+          if (remaining.length > 0) selectConversation(remaining[0].id)
         }
       } else {
         setError('Failed to delete conversation')
@@ -162,40 +144,24 @@ export default function ChatPage() {
     try {
       const response = await fetch(`/api/chat/conversations/${conversationId}/actions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'rename',
-          data: { title: newTitle }
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rename', data: { title: newTitle } }),
       })
 
       if (response.ok) {
         const data = await response.json()
         const updatedConversation = data.conversation
-        
-        // Update in conversations list
         const updateConversations = (prev: ConversationWithMessageCount[]) =>
-          prev.map(conv => 
-            conv.id === conversationId 
-              ? { ...conv, title: updatedConversation.title }
-              : conv
-          )
+          prev.map(conv => conv.id === conversationId ? { ...conv, title: updatedConversation.title } : conv)
         
         setConversations(updateConversations)
         setAllConversations(updateConversations)
-        
-        // Update current conversation if it's the one being renamed
-        if (currentConversation?.id === conversationId) {
-          setCurrentConversation(updatedConversation)
-        }
+        if (currentConversation?.id === conversationId) setCurrentConversation(updatedConversation)
       } else {
         setError('Failed to rename conversation')
       }
     } catch (error) {
       console.error('Failed to rename conversation:', error)
-      setError('Failed to rename conversation')
     }
   }
 
@@ -203,22 +169,14 @@ export default function ChatPage() {
     try {
       const response = await fetch(`/api/chat/conversations/${conversationId}/actions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'export'
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'export' }),
       })
 
       if (response.ok) {
         const result = await response.json()
         const { data: exportData, filename } = result
-        
-        // Create and download the file
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-          type: 'application/json'
-        })
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -227,12 +185,9 @@ export default function ChatPage() {
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-      } else {
-        setError('Failed to export conversation')
       }
     } catch (error) {
       console.error('Failed to export conversation:', error)
-      setError('Failed to export conversation')
     }
   }
 
@@ -247,44 +202,25 @@ export default function ChatPage() {
 
   const sendMessage = async (content: string) => {
     if (!currentConversation) {
-      // Create new conversation if none exists
       await createNewConversation()
-      // Wait a bit for the conversation to be created
       await new Promise(resolve => setTimeout(resolve, 100))
     }
-
-    if (!currentConversation) {
-      throw new Error('No conversation available')
-    }
+    if (!currentConversation) throw new Error('No conversation available')
 
     try {
-      // Send message to API (non-streaming fallback)
       const response = await fetch('/api/chat/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          conversationId: currentConversation.id,
-          content,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: currentConversation.id, content }),
       })
 
       if (response.ok) {
         const data = await response.json()
-        
-        // Update messages with both user and AI messages
         setMessages(prev => [...prev, data.userMessage, data.aiMessage])
-        
-        // Update conversation title if it's the first message
         if (messages.length === 0 && data.conversation) {
           setCurrentConversation(data.conversation)
-          setConversations(prev => 
-            prev.map(conv => 
-              conv.id === data.conversation.id 
-                ? { ...conv, title: data.conversation.title }
-                : conv
-            )
+          setConversations(prev =>
+            prev.map(conv => conv.id === data.conversation.id ? { ...conv, title: data.conversation.title } : conv)
           )
         }
       } else {
@@ -297,18 +233,12 @@ export default function ChatPage() {
     }
   }
 
-  const handleUpdateMessages = (newMessages: Message[]) => {
-    setMessages(newMessages)
-  }
+  const handleUpdateMessages = (newMessages: Message[]) => setMessages(newMessages)
 
   const handleUpdateConversation = (updatedConversation: Conversation) => {
     setCurrentConversation(updatedConversation)
-    setConversations(prev => 
-      prev.map(conv => 
-        conv.id === updatedConversation.id 
-          ? { ...conv, title: updatedConversation.title }
-          : conv
-      )
+    setConversations(prev =>
+      prev.map(conv => conv.id === updatedConversation.id ? { ...conv, title: updatedConversation.title } : conv)
     )
   }
 
@@ -318,52 +248,78 @@ export default function ChatPage() {
 
   if (status === 'loading') {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center bg-[#0a0a0f]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="relative w-12 h-12 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-2 border-blue-500/20"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 animate-spin"></div>
+          </div>
+          <p className="text-gray-400 text-sm">Loading VIVK...</p>
         </div>
       </div>
     )
   }
 
-  if (!session) {
-    return null
-  }
+  if (!session) return null
 
   return (
-    <div className="h-screen flex bg-gray-50">
+    <div className="h-screen flex bg-[#0f0f17] overflow-hidden">
+      {/* Mobile sidebar overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <ConversationSidebar
-        conversations={conversations}
-        currentConversationId={currentConversation?.id}
-        onSelectConversation={selectConversation}
-        onNewConversation={createNewConversation}
-        onDeleteConversation={deleteConversation}
-        onRenameConversation={renameConversation}
-        onExportConversation={exportConversation}
-        onSearchConversations={searchConversations}
-        onSignOut={handleSignOut}
-        userEmail={session.user.email}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
+      <div className={`
+        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0 fixed lg:relative z-50 lg:z-auto
+        transition-transform duration-300 ease-in-out h-full
+      `}>
+        <ConversationSidebar
+          conversations={conversations}
+          currentConversationId={currentConversation?.id}
+          onSelectConversation={selectConversation}
+          onNewConversation={createNewConversation}
+          onDeleteConversation={deleteConversation}
+          onRenameConversation={renameConversation}
+          onExportConversation={exportConversation}
+          onSearchConversations={searchConversations}
+          onSignOut={handleSignOut}
+          userEmail={session.user.email}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+      </div>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile header */}
+        <div className="lg:hidden flex items-center px-4 py-3 border-b border-white/5 bg-[#0f0f17]">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="p-2 -ml-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+          <span className="ml-3 text-sm font-medium text-white truncate">
+            {currentConversation?.title || 'VIVK'}
+          </span>
+        </div>
+
+        {/* Error banner */}
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-                <button
-                  onClick={() => setError(null)}
-                  className="mt-2 text-sm text-red-600 hover:text-red-500"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
+          <div className="mx-4 mt-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between">
+            <p className="text-sm text-red-400">{error}</p>
+            <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-400 ml-3">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
         
