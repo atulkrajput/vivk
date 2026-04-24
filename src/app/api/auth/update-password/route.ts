@@ -2,35 +2,28 @@ import { NextRequest, NextResponse } from "next/server"
 import { hash } from "bcryptjs"
 import { z } from "zod"
 import { userDb } from "@/lib/db"
+import { resetTokens } from "../reset-password/route"
 
-// Validation schema for password update
 const updatePasswordSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
   password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
+    .min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"]
 })
 
-// Import the reset tokens from the reset-password route
-// In production, this would be stored in database or Redis
-const resetTokens = new Map<string, { userId: string, expires: Date }>()
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    // Validate input
     const { token, password } = updatePasswordSchema.parse(body)
     
     // Verify token
     const tokenData = resetTokens.get(token)
     if (!tokenData || tokenData.expires < new Date()) {
       return NextResponse.json(
-        { error: "Invalid or expired reset token" },
+        { error: "Invalid or expired reset token. Please request a new reset link." },
         { status: 400 }
       )
     }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { hash } from "bcryptjs"
 import { z } from "zod"
 import { userDb, validateEnvironment } from "@/lib/db"
+import { sendWelcomeEmail } from "@/lib/email"
 
 const registerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -75,6 +76,12 @@ export async function POST(request: NextRequest) {
       }
       
       console.log('User created successfully:', user.id)
+      
+      // Send welcome email (non-blocking)
+      sendWelcomeEmail(sanitizedEmail, fullName).catch(err =>
+        console.error('Welcome email failed (non-critical):', err)
+      )
+      
       return NextResponse.json({
         success: true,
         message: "Account created successfully! You can now sign in.",
