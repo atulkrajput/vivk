@@ -6,6 +6,7 @@ import type {
   UsageLog,
   Subscription,
   Payment,
+  Plan,
   UserInsert,
   ConversationInsert,
   MessageInsert,
@@ -97,9 +98,11 @@ export const userDb = {
     try {
       const id = crypto.randomUUID()
       await query(
-        `INSERT INTO users (id, email, password_hash, email_verified, subscription_tier, subscription_status)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [id, userData.email, userData.password_hash, userData.email_verified ?? false,
+        `INSERT INTO users (id, email, password_hash, full_name, phone, country_code, address, email_verified, subscription_tier, subscription_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, userData.email, userData.password_hash, userData.full_name || '',
+         userData.phone || '', userData.country_code || '+91', userData.address || null,
+         userData.email_verified ?? false,
          userData.subscription_tier || 'free', userData.subscription_status || 'active']
       )
       return await this.getById(id)
@@ -397,13 +400,14 @@ export const usageDb = {
 
   async getUsageStats(userId: string) {
     const user = await userDb.getById(userId)
-    const isFreeTier = user?.subscription_tier === 'free'
-    const dailyLimit = isFreeTier ? 20 : -1
+    const plan = await planDb.getById(user?.subscription_tier || 'free')
+    const dailyLimit = plan?.daily_message_limit ?? 20
+    const hasLimit = dailyLimit !== -1
 
     const todayUsage = await this.getTodayUsage(userId)
     const weeklyUsage = await this.getWeeklyUsage(userId)
     const monthlyUsage = await this.getCurrentMonthUsage(userId)
-    const remainingToday = isFreeTier ? Math.max(0, dailyLimit - todayUsage) : -1
+    const remainingToday = hasLimit ? Math.max(0, dailyLimit - todayUsage) : -1
 
     const history: Array<{ date: string; count: number }> = []
     for (let i = 6; i >= 0; i--) {
@@ -533,45 +537,121 @@ export const paymentDb = {
   }
 }
 
+// Plan operations (reads from plans table)
+let plansCache: Map<string, Plan> | null = null
+let plansCacheTime = 0
+const PLANS_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+function parsePlanRow(row: any): Plan {
+  return {
+    ...row,
+    api_access: row.api_access === 1 || row.api_access === true,
+    team_features: row.team_features === 1 || row.team_features === true,
+    priority_support: row.priority_support === 1 || row.priority_support === true,
+    is_popular: row.is_popular === 1 || row.is_popular === true,
+    is_active: row.is_active === 1 || row.is_active === true,
+    features: typeof row.features === 'string' ? JSON.parse(row.features) : (row.features || []),
+  }
+}
+
+export const planDb = {
+  async getAll(): Promise<Plan[]> {
+    try {
+      // Use cache if fresh
+      if (plansCache && Date.now() - plansCacheTime < PLANS_CACHE_TTL) {
+        return Array.from(plansCache.values())
+      }
+      const rows = await query<any>('SELECT * FROM plans WHERE is_active = 1 ORDER BY sort_order ASC')
+      const plans = rows.map(parsePlanRow)
+      plansCache = new Map(plans.map(p => [p.id, p]))
+      plansCacheTime = Date.now()
+      return plans
+    } catch (error) {
+      console.error('Error fetching plans:', error)
+      return []
+    }
+  },
+
+  async getById(planId: string): Promise<Plan | null> {
+    try {
+      // Check cache first
+      if (plansCache && Date.now() - plansCacheTime < PLANS_CACHE_TTL) {
+        return plansCache.get(planId) || null
+      }
+      await this.getAll() // populate cache
+      return plansCache?.get(planId) || null
+    } catch (error) {
+      console.error('Error fetching plan:', error)
+      return null
+    }
+  },
+
+  async getDailyLimit(planId: string): Promise<number> {
+    const plan = await this.getById(planId)
+    return plan?.daily_message_limit ?? 20
+  },
+
+  async getAIModel(planId: string): Promise<string> {
+    const plan = await this.getById(planId)
+    return plan?.ai_model ?? 'haiku'
+  },
+
+  clearCache() {
+    plansCache = null
+    plansCacheTime = 0
+  }
+}
+
 // Utility functions
 export const dbUtils = {
   async hasReachedDailyLimit(userId: string): Promise<boolean> {
     const user = await userDb.getById(userId)
-    if (!user || user.subscription_tier !== 'free') return false
+    if (!user) return true
+    const plan = await planDb.getById(user.subscription_tier)
+    if (!plan) return true
+    // -1 means unlimited
+    if (plan.daily_message_limit === -1) return false
     const todayUsage = await usageDb.getTodayUsage(userId)
-    return todayUsage >= 20
+    return todayUsage >= plan.daily_message_limit
   },
 
   async isApproachingDailyLimit(userId: string): Promise<boolean> {
     const user = await userDb.getById(userId)
-    if (!user || user.subscription_tier !== 'free') return false
+    if (!user) return false
+    const plan = await planDb.getById(user.subscription_tier)
+    if (!plan || plan.daily_message_limit === -1) return false
     const todayUsage = await usageDb.getTodayUsage(userId)
-    return todayUsage >= 16
+    const threshold = Math.max(1, plan.daily_message_limit - 4) // warn when 4 messages left
+    return todayUsage >= threshold && todayUsage < plan.daily_message_limit
   },
 
   async getRemainingMessages(userId: string): Promise<number> {
     const user = await userDb.getById(userId)
-    if (!user || user.subscription_tier !== 'free') return -1
+    if (!user) return 0
+    const plan = await planDb.getById(user.subscription_tier)
+    if (!plan || plan.daily_message_limit === -1) return -1
     const todayUsage = await usageDb.getTodayUsage(userId)
-    return Math.max(0, 20 - todayUsage)
+    return Math.max(0, plan.daily_message_limit - todayUsage)
   },
 
   async getUsageLimitStatus(userId: string) {
     const user = await userDb.getById(userId)
-    const isFreeTier = user?.subscription_tier === 'free'
-    const dailyLimit = isFreeTier ? 20 : -1
+    const plan = await planDb.getById(user?.subscription_tier || 'free')
+    const dailyLimit = plan?.daily_message_limit ?? 20
+    const hasLimit = dailyLimit !== -1
     const todayUsage = await usageDb.getTodayUsage(userId)
-    const remainingMessages = isFreeTier ? Math.max(0, dailyLimit - todayUsage) : -1
-    const hasReachedLimit = isFreeTier && todayUsage >= dailyLimit
-    const isApproachingLimit = isFreeTier && todayUsage >= 16 && todayUsage < dailyLimit
+    const remainingMessages = hasLimit ? Math.max(0, dailyLimit - todayUsage) : -1
+    const hasReachedLimit = hasLimit && todayUsage >= dailyLimit
+    const threshold = Math.max(1, dailyLimit - 4)
+    const isApproachingLimit = hasLimit && todayUsage >= threshold && todayUsage < dailyLimit
 
     let warningMessage: string | undefined
     let limitMessage: string | undefined
 
     if (hasReachedLimit) {
-      limitMessage = "You've reached your daily limit of 20 messages. Upgrade to Pro for unlimited messages at just ₹499/month!"
+      limitMessage = `You've reached your daily limit of ${dailyLimit} messages. Upgrade your plan for more messages!`
     } else if (isApproachingLimit) {
-      warningMessage = `You have ${remainingMessages} messages remaining today. Consider upgrading to Pro for unlimited access.`
+      warningMessage = `You have ${remainingMessages} messages remaining today. Consider upgrading for unlimited access.`
     }
 
     return { hasReachedLimit, isApproachingLimit, remainingMessages, todayUsage, dailyLimit, warningMessage, limitMessage }

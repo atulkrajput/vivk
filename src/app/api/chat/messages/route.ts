@@ -99,22 +99,20 @@ export async function POST(request: NextRequest) {
       return conv
     }, 2)
 
-    // Check usage limits for free tier users
-    if (session.user.subscriptionTier === 'free') {
-      const hasReachedLimit = await withRetry(
-        () => dbUtils.hasReachedDailyLimit(session.user.id),
-        2
+    // Check usage limits for all users based on their plan
+    const hasReachedLimit = await withRetry(
+      () => dbUtils.hasReachedDailyLimit(session.user.id),
+      2
+    )
+    
+    if (hasReachedLimit) {
+      throw new VivkError(
+        ErrorCode.DAILY_LIMIT_REACHED,
+        'Daily message limit reached',
+        'You\'ve reached your daily message limit. Upgrade your plan for more messages.',
+        ErrorSeverity.MEDIUM,
+        false
       )
-      
-      if (hasReachedLimit) {
-        throw new VivkError(
-          ErrorCode.DAILY_LIMIT_REACHED,
-          'Daily message limit reached',
-          'You\'ve reached your daily message limit. Upgrade to Pro for unlimited messages.',
-          ErrorSeverity.MEDIUM,
-          false
-        )
-      }
     }
 
     // Create user message with database circuit breaker
@@ -183,15 +181,13 @@ export async function POST(request: NextRequest) {
       return message
     })
 
-    // Update usage tracking for free tier users
-    if (session.user.subscriptionTier === 'free') {
-      await withRetry(async () => {
-        await usageDb.incrementDailyUsage(
-          session.user.id, 
-          (userMessage.tokens || 0) + (aiMessage.tokens || 0)
-        )
-      }, 2)
-    }
+    // Update usage tracking for all users
+    await withRetry(async () => {
+      await usageDb.incrementDailyUsage(
+        session.user.id, 
+        (userMessage.tokens || 0) + (aiMessage.tokens || 0)
+      )
+    }, 2)
 
     // Update conversation title if this is the first message
     let updatedConversation = conversation

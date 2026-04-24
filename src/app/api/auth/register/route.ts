@@ -3,16 +3,18 @@ import { hash } from "bcryptjs"
 import { z } from "zod"
 import { userDb, validateEnvironment } from "@/lib/db"
 
-// Enhanced validation schema for registration
 const registerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters long"),
-  confirmPassword: z.string().min(1, "Password confirmation is required")
+  confirmPassword: z.string().min(1, "Password confirmation is required"),
+  fullName: z.string().min(2, "Full name must be at least 2 characters").max(255),
+  phone: z.string().min(6, "Please enter a valid phone number").max(20),
+  countryCode: z.string().min(2, "Country code is required").max(5),
+  address: z.string().max(500).optional().default(''),
 })
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if environment is properly configured
     const envCheck = validateEnvironment()
     if (!envCheck.isValid) {
       console.error('Environment variables not configured:', envCheck.missingVars)
@@ -25,22 +27,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Registration attempt for email:', body.email?.substring(0, 3) + '***')
     
-    // Basic validation
     const validatedBody = registerSchema.parse(body)
-    const { email, password, confirmPassword } = validatedBody
+    const { email, password, confirmPassword, fullName, phone, countryCode, address } = validatedBody
     
-    // Check password confirmation
     if (password !== confirmPassword) {
-      return NextResponse.json(
-        { error: "Passwords don't match" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Passwords don't match" }, { status: 400 })
     }
     
-    // Basic email sanitization
     const sanitizedEmail = email.toLowerCase().trim()
     
-    // Check if user already exists
     try {
       const existingUser = await userDb.getByEmail(sanitizedEmail)
       if (existingUser) {
@@ -58,16 +53,18 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Hash password
     const passwordHash = await hash(password, 12)
     
-    // Create user
     try {
       console.log('Attempting to create user:', sanitizedEmail.substring(0, 3) + '***')
       const user = await userDb.create({
         email: sanitizedEmail,
         password_hash: passwordHash,
-        email_verified: true, // For MVP, skip email verification
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+        country_code: countryCode,
+        address: address?.trim() || '',
+        email_verified: true,
         subscription_tier: 'free',
         subscription_status: 'active'
       })

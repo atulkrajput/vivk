@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS users (
   id CHAR(36) NOT NULL PRIMARY KEY,
   email VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255) NOT NULL DEFAULT '',
+  phone VARCHAR(20) NOT NULL DEFAULT '',
+  country_code VARCHAR(5) NOT NULL DEFAULT '+91',
+  address TEXT NULL,
   email_verified TINYINT(1) DEFAULT 0,
   subscription_tier ENUM('free', 'pro', 'business') DEFAULT 'free',
   subscription_status ENUM('active', 'cancelled', 'expired', 'pending') DEFAULT 'active',
@@ -89,3 +93,33 @@ CREATE TABLE IF NOT EXISTS payments (
   INDEX idx_payments_status (status),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Plans table (single source of truth for plan configuration)
+CREATE TABLE IF NOT EXISTS plans (
+  id VARCHAR(20) NOT NULL PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  price INT NOT NULL DEFAULT 0 COMMENT 'Price in paise',
+  price_display VARCHAR(20) NOT NULL DEFAULT '₹0',
+  currency VARCHAR(3) NOT NULL DEFAULT 'INR',
+  billing_interval ENUM('month', 'year') DEFAULT 'month',
+  daily_message_limit INT NOT NULL DEFAULT 20 COMMENT '-1 for unlimited',
+  ai_model VARCHAR(20) NOT NULL DEFAULT 'haiku',
+  chat_history_days INT NOT NULL DEFAULT 7 COMMENT '-1 for unlimited',
+  api_access TINYINT(1) NOT NULL DEFAULT 0,
+  team_features TINYINT(1) NOT NULL DEFAULT 0,
+  priority_support TINYINT(1) NOT NULL DEFAULT 0,
+  features JSON NULL COMMENT 'Array of feature strings for display',
+  is_popular TINYINT(1) NOT NULL DEFAULT 0,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  razorpay_plan_id VARCHAR(255) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Seed default plans
+INSERT INTO plans (id, name, price, price_display, daily_message_limit, ai_model, chat_history_days, api_access, team_features, priority_support, features, is_popular, sort_order) VALUES
+('free', 'Free', 0, '₹0', 20, 'haiku', 7, 0, 0, 0, '["20 messages per day", "Claude Haiku AI model", "7-day chat history", "Basic support"]', 0, 1),
+('pro', 'Pro', 99900, '₹999', -1, 'sonnet', -1, 0, 0, 1, '["Unlimited messages", "Claude Sonnet AI model", "Unlimited chat history", "Priority support", "Export conversations"]', 1, 2),
+('business', 'Business', 499900, '₹4,999', -1, 'sonnet', -1, 1, 1, 1, '["Everything in Pro", "API access", "Team collaboration", "Custom integrations", "Dedicated support", "Advanced analytics"]', 0, 3)
+ON DUPLICATE KEY UPDATE name=VALUES(name);

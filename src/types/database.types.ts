@@ -3,6 +3,10 @@ export interface User {
   id: string
   email: string
   password_hash: string
+  full_name: string
+  phone: string
+  country_code: string
+  address?: string
   email_verified: boolean
   subscription_tier: 'free' | 'pro' | 'business'
   subscription_status: 'active' | 'cancelled' | 'expired' | 'pending'
@@ -58,6 +62,28 @@ export interface Payment {
   currency: string
   status: 'pending' | 'completed' | 'failed' | 'refunded'
   created_at: Date
+}
+
+export interface Plan {
+  id: string
+  name: string
+  price: number // Price in paise
+  price_display: string
+  currency: string
+  billing_interval: 'month' | 'year'
+  daily_message_limit: number // -1 for unlimited
+  ai_model: string
+  chat_history_days: number // -1 for unlimited
+  api_access: boolean
+  team_features: boolean
+  priority_support: boolean
+  features: string[] // parsed from JSON
+  is_popular: boolean
+  sort_order: number
+  is_active: boolean
+  razorpay_plan_id?: string
+  created_at: Date
+  updated_at: Date
 }
 
 // Database insert types (without auto-generated fields)

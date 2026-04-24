@@ -51,22 +51,22 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 49900, // ₹499 in paise
-    priceDisplay: '₹499',
+    price: 99900, // ₹999 in paise
+    priceDisplay: '₹999',
     currency: 'INR',
     interval: 'month',
     features: [
       'Unlimited messages',
       'Claude Sonnet AI model',
       'Unlimited chat history',
-      'API access',
-      'Priority support'
+      'Priority support',
+      'Export conversations'
     ],
     limits: {
       dailyMessages: -1, // unlimited
       aiModel: 'sonnet',
       chatHistory: -1, // unlimited
-      apiAccess: true,
+      apiAccess: false,
       teamFeatures: false,
       prioritySupport: true
     },
@@ -76,17 +76,17 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
   business: {
     id: 'business',
     name: 'Business',
-    price: 299900, // ₹2,999 in paise
-    priceDisplay: '₹2,999',
+    price: 499900, // ₹4,999 in paise
+    priceDisplay: '₹4,999',
     currency: 'INR',
     interval: 'month',
     features: [
       'Everything in Pro',
+      'API access',
       'Team collaboration',
       'Custom integrations',
       'Dedicated support',
-      'Advanced analytics',
-      'Custom AI models'
+      'Advanced analytics'
     ],
     limits: {
       dailyMessages: -1, // unlimited

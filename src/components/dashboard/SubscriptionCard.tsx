@@ -154,14 +154,14 @@ export function SubscriptionCard({
                 disabled={isLoading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {isLoading ? 'Processing...' : 'Upgrade to Pro - ₹499/month'}
+                {isLoading ? 'Processing...' : 'Upgrade to Pro - ₹999/month'}
               </Button>
               <Button
                 onClick={() => handleUpgrade('business')}
                 disabled={isLoading}
                 className="w-full bg-gray-600 hover:bg-gray-700 text-white"
               >
-                {isLoading ? 'Processing...' : 'Upgrade to Business - ₹2,999/month'}
+                {isLoading ? 'Processing...' : 'Upgrade to Business - ₹4,999/month'}
               </Button>
             </div>
           )}
@@ -173,7 +173,7 @@ export function SubscriptionCard({
                 disabled={isLoading}
                 className="w-full bg-gray-600 hover:bg-gray-700 text-white"
               >
-                {isLoading ? 'Processing...' : 'Upgrade to Business - ₹2,999/month'}
+                {isLoading ? 'Processing...' : 'Upgrade to Business - ₹4,999/month'}
               </Button>
             </div>
           )}

@@ -71,7 +71,7 @@ export function ChatInterface({
   })
 
   useEffect(() => {
-    if (session?.user?.subscriptionTier === 'free') fetchUsageStatus()
+    fetchUsageStatus()
   }, [session, messages.length])
 
   const fetchUsageStatus = async () => {
@@ -96,7 +96,7 @@ export function ChatInterface({
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading || isStreaming) return
     if (!conversation?.id) return
-    if (session?.user?.subscriptionTier === 'free' && usageStatus?.hasReachedLimit) {
+    if (usageStatus?.hasReachedLimit) {
       setShowUsageWarning(true)
       return
     }
@@ -110,7 +110,7 @@ export function ChatInterface({
         content.trim(),
         (userMessage) => {
           onUpdateMessages([...messages, userMessage])
-          if (session?.user?.subscriptionTier === 'free') setTimeout(fetchUsageStatus, 1000)
+          setTimeout(fetchUsageStatus, 1000)
         },
         (chunk, fullContent) => {
           if (!streamingMessage) {
@@ -145,7 +145,7 @@ export function ChatInterface({
       try {
         setIsTyping(true)
         await onSendMessage(content.trim())
-        if (session?.user?.subscriptionTier === 'free') setTimeout(fetchUsageStatus, 1000)
+        setTimeout(fetchUsageStatus, 1000)
       } catch (error) {
         handleError(error)
       } finally {
@@ -156,10 +156,11 @@ export function ChatInterface({
 
   const handleUpgrade = () => { window.location.href = '/dashboard/billing' }
   const handleRetryMessage = () => {
-    retry(async () => { if (session?.user?.subscriptionTier === 'free') await fetchUsageStatus() })
+    retry(async () => { await fetchUsageStatus() })
   }
 
   const modelName = session?.user?.subscriptionTier === 'free' ? 'Haiku' : 'Sonnet'
+  const planName = session?.user?.subscriptionTier === 'business' ? 'Business' : session?.user?.subscriptionTier === 'pro' ? 'Pro' : 'Free'
   const hasMessages = messages.length > 0 || !!streamingMessage
 
   return (
@@ -214,7 +215,7 @@ export function ChatInterface({
                   How can I help you today?
                 </h2>
                 <p className="text-sm text-gray-500 mb-8">
-                  Using Claude {modelName} · {session?.user?.subscriptionTier === 'free' ? 'Free' : 'Pro'} Plan
+                  Using Claude {modelName} · {planName} Plan
                 </p>
 
                 {/* Suggestion cards */}
@@ -251,17 +252,17 @@ export function ChatInterface({
           <div className="max-w-3xl mx-auto w-full">
             <MessageInput
               onSendMessage={handleSendMessage}
-              disabled={isLoading || isStreaming || (usageStatus?.hasReachedLimit && session?.user?.subscriptionTier === 'free')}
+              disabled={isLoading || isStreaming || usageStatus?.hasReachedLimit}
               placeholder={
-                usageStatus?.hasReachedLimit && session?.user?.subscriptionTier === 'free'
-                  ? "Daily limit reached. Upgrade to Pro for unlimited messages."
+                usageStatus?.hasReachedLimit
+                  ? "Daily limit reached. Upgrade your plan for more messages."
                   : "Message VIVK..."
               }
             />
             {/* Footer info */}
             <div className="text-center pb-3 px-4">
               <p className="text-[11px] text-gray-600">
-                {session?.user?.subscriptionTier === 'free' && usageStatus
+                {usageStatus && usageStatus.dailyLimit !== -1
                   ? `${usageStatus.remainingMessages} of ${usageStatus.dailyLimit} messages remaining today · `
                   : ''
                 }

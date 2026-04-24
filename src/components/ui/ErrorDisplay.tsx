@@ -269,7 +269,7 @@ export function DailyLimitErrorDisplay({ onUpgrade }: { onUpgrade?: () => void }
           </h3>
           <div className="mt-2 text-sm text-orange-700">
             <p>You've reached your daily message limit of 20 messages.</p>
-            <p className="mt-1">Upgrade to Pro for unlimited messages at just ₹499/month.</p>
+            <p className="mt-1">Upgrade to Pro for unlimited messages at just ₹999/month.</p>
           </div>
           <div className="mt-4">
             <div className="flex space-x-2">

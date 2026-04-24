@@ -67,7 +67,7 @@ export function UsageWarning({
                 onClick={onUpgrade}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2"
               >
-                Upgrade to Pro - ₹499/month
+                Upgrade to Pro - ₹999/month
               </Button>
             )}
             

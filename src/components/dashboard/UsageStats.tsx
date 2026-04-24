@@ -200,7 +200,7 @@ export function UsageStats({ className = '' }: UsageStatsProps) {
             Want unlimited messages?
           </p>
           <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition-colors">
-            Upgrade to Pro - ₹499/month
+            Upgrade to Pro - ₹999/month
           </button>
         </div>
       )}

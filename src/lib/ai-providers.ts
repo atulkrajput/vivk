@@ -268,10 +268,18 @@ class DevMockService implements AIService {
 
 // Check if an API key looks valid (not a placeholder)
 function isValidApiKey(key: string | undefined): boolean {
-  if (!key) return false
+  if (!key || key.length < 20) return false
   const placeholders = ['your-', 'placeholder', 'xxx', 'test', 'fake', 'dummy', 'change-me']
   const lower = key.toLowerCase()
-  return !placeholders.some(p => lower.includes(p))
+  if (placeholders.some(p => lower.includes(p))) return false
+  return true
+}
+
+// Stricter check for Anthropic keys
+function isValidAnthropicKey(key: string | undefined): boolean {
+  if (!key) return false
+  // Anthropic keys always start with sk-ant-
+  return key.startsWith('sk-ant-') && key.length > 30
 }
 
 // Service factory
@@ -281,7 +289,7 @@ export function createAIService(provider?: AIProvider): AIService {
   // Fall back to mock service if no valid API key is configured
   switch (currentProvider) {
     case 'anthropic':
-      if (isValidApiKey(process.env.ANTHROPIC_API_KEY)) {
+      if (isValidAnthropicKey(process.env.ANTHROPIC_API_KEY)) {
         return new AnthropicService()
       }
       console.warn('⚠️  No valid ANTHROPIC_API_KEY found. Using mock AI responses for development.')
@@ -303,5 +311,20 @@ export function createAIService(provider?: AIProvider): AIService {
   }
 }
 
-// Default service instance
-export const aiService = createAIService()
+// Lazy-initialized service instance
+let _aiService: AIService | null = null
+
+export const aiService: AIService = {
+  generateResponse(messages: Message[], tier: SubscriptionTier): Promise<string> {
+    if (!_aiService) _aiService = createAIService()
+    return _aiService.generateResponse(messages, tier)
+  },
+  generateStreamingResponse(messages: Message[], tier: SubscriptionTier): AsyncIterable<string> {
+    if (!_aiService) _aiService = createAIService()
+    return _aiService.generateStreamingResponse(messages, tier)
+  },
+  estimateTokens(content: string): number {
+    if (!_aiService) _aiService = createAIService()
+    return _aiService.estimateTokens(content)
+  }
+}

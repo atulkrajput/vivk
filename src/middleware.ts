@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   const isPublicPage = ['/', '/landing', '/login', '/register', '/reset-password', '/maintenance']
     .some(route => pathname === route)
   const isAuthApi = pathname.startsWith('/api/auth')
-  const isPublicApi = pathname.startsWith('/api/health') || pathname.startsWith('/api/debug') || pathname.startsWith('/api/payments/webhook')
+  const isPublicApi = pathname.startsWith('/api/health') || pathname.startsWith('/api/debug') || pathname.startsWith('/api/payments/webhook') || pathname.startsWith('/api/plans')
 
   // No rate limiting on auth API routes (NextAuth needs multiple calls)
   // Only rate limit non-auth API routes

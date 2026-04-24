@@ -60,7 +60,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Your intelligent companion for work, creativity, and learning. Built for Indian businesses and individuals. Starting at just ₹499/month.
+            Your intelligent companion for work, creativity, and learning. Built for Indian businesses and individuals. Starting at just ₹999/month.
           </p>
 
           {/* Email CTA */}
@@ -160,12 +160,13 @@ export default function LandingPage() {
                 </span>
               </div>
               <h3 className="text-lg font-semibold mb-1">Pro</h3>
-              <div className="mb-6"><span className="text-4xl font-bold">₹499</span><span className="text-gray-400 ml-1">/month</span></div>
+              <div className="mb-6"><span className="text-4xl font-bold">₹999</span><span className="text-gray-400 ml-1">/month</span></div>
               <ul className="space-y-3 mb-8 text-sm">
                 <li className="flex items-center gap-2 text-gray-300"><span className="text-green-400 text-lg">✓</span><strong className="text-white">Unlimited</strong> queries</li>
                 <li className="flex items-center gap-2 text-gray-300"><span className="text-green-400 text-lg">✓</span><strong className="text-white">Advanced</strong> AI model</li>
                 <li className="flex items-center gap-2 text-gray-300"><span className="text-green-400 text-lg">✓</span>Unlimited chat history</li>
-                <li className="flex items-center gap-2 text-gray-300"><span className="text-green-400 text-lg">✓</span>API access</li>
+                <li className="flex items-center gap-2 text-gray-300"><span className="text-green-400 text-lg">✓</span>Priority support</li>
+                <li className="flex items-center gap-2 text-gray-300"><span className="text-green-400 text-lg">✓</span>Export conversations</li>
               </ul>
               <button onClick={() => router.push('/register?plan=pro')}
                 className="w-full py-3 rounded-xl bg-white text-gray-900 font-semibold hover:bg-gray-100 transition text-sm">
@@ -176,9 +177,10 @@ export default function LandingPage() {
             {/* Business */}
             <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-lg transition-all duration-300">
               <h3 className="text-lg font-semibold text-gray-900 mb-1">Business</h3>
-              <div className="mb-6"><span className="text-4xl font-bold text-gray-900">₹2,999</span><span className="text-gray-400 ml-1">/month</span></div>
+              <div className="mb-6"><span className="text-4xl font-bold text-gray-900">₹4,999</span><span className="text-gray-400 ml-1">/month</span></div>
               <ul className="space-y-3 mb-8 text-sm">
                 <li className="flex items-center gap-2 text-gray-600"><span className="text-green-500 text-lg">✓</span><strong>Everything in Pro</strong></li>
+                <li className="flex items-center gap-2 text-gray-600"><span className="text-green-500 text-lg">✓</span>API access</li>
                 <li className="flex items-center gap-2 text-gray-600"><span className="text-green-500 text-lg">✓</span>Team collaboration</li>
                 <li className="flex items-center gap-2 text-gray-600"><span className="text-green-500 text-lg">✓</span>Custom integrations</li>
                 <li className="flex items-center gap-2 text-gray-600"><span className="text-green-500 text-lg">✓</span>Dedicated support</li>

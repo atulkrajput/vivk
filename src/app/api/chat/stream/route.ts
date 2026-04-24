@@ -40,21 +40,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check usage limits for free tier users
-    if (session.user.subscriptionTier === 'free') {
-      const hasReachedLimit = await dbUtils.hasReachedDailyLimit(session.user.id)
-      if (hasReachedLimit) {
-        return new Response(
-          JSON.stringify({ 
-            error: "Daily message limit reached. Upgrade to Pro for unlimited messages.",
-            code: "DAILY_LIMIT_REACHED"
-          }),
-          { 
-            status: 429,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        )
-      }
+    // Check usage limits for all users based on their plan
+    const hasReachedLimit = await dbUtils.hasReachedDailyLimit(session.user.id)
+    if (hasReachedLimit) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Daily message limit reached. Upgrade your plan for more messages.",
+          code: "DAILY_LIMIT_REACHED"
+        }),
+        { 
+          status: 429,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Create user message
@@ -120,13 +118,11 @@ export async function POST(request: NextRequest) {
             })
 
             if (aiMessage) {
-              // Update usage tracking for free tier users
-              if (session.user.subscriptionTier === 'free') {
-                await usageDb.incrementDailyUsage(
+              // Update usage tracking for all users
+              await usageDb.incrementDailyUsage(
                   session.user.id, 
                   (userMessage.tokens || 0) + (aiMessage.tokens || 0)
                 )
-              }
 
               // Update conversation title if this is the first message
               let updatedConversation = conversation
