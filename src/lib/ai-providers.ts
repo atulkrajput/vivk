@@ -1,8 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk'
+import Groq from 'groq-sdk'
 import type { Message } from '@/types/database.types'
 
 // AI Provider types
-export type AIProvider = 'anthropic' | 'openai' | 'custom'
+export type AIProvider = 'anthropic' | 'groq' | 'openai' | 'custom'
 export type SubscriptionTier = 'free' | 'pro' | 'business'
 
 // Provider configuration interface
@@ -23,6 +24,20 @@ export interface AIProviderConfig {
 
 // Provider configurations
 export const AI_PROVIDERS: Record<AIProvider, AIProviderConfig> = {
+  groq: {
+    name: 'Groq',
+    models: {
+      free: process.env.GROQ_MODEL_NAME || 'openai/gpt-oss-20b',
+      pro: process.env.GROQ_MODEL_NAME || 'openai/gpt-oss-20b',
+      business: process.env.GROQ_MODEL_NAME || 'openai/gpt-oss-20b'
+    },
+    maxTokens: {
+      free: 1024,
+      pro: 4096,
+      business: 8192
+    },
+    systemPrompt: "You are VIVK (Virtual Intelligent Versatile Knowledge), an AI assistant built specifically for the Indian market. You are helpful, knowledgeable, and understand Indian context, culture, and business practices. Provide clear, accurate, and culturally relevant responses."
+  },
   anthropic: {
     name: 'Anthropic Claude',
     models: {
@@ -70,7 +85,22 @@ export const AI_PROVIDERS: Record<AIProvider, AIProviderConfig> = {
 // Get current provider from environment
 export function getCurrentProvider(): AIProvider {
   const provider = process.env.AI_PROVIDER as AIProvider
-  return provider && provider in AI_PROVIDERS ? provider : 'anthropic'
+  if (provider && provider in AI_PROVIDERS) return provider
+  // Default to groq if key is available, otherwise anthropic
+  if (process.env.GROQ_API_KEY) return 'groq'
+  return 'anthropic'
+}
+
+// Get the provider to use for a specific tier
+// Free users -> Groq (fast & free), Paid users -> Anthropic Claude Sonnet
+export function getProviderForTier(tier: SubscriptionTier): AIProvider {
+  if (tier === 'free') {
+    // Use Groq for free tier if key is available
+    if (process.env.GROQ_API_KEY) return 'groq'
+    return 'anthropic'
+  }
+  // Pro and Business users get Anthropic Claude Sonnet
+  return 'anthropic'
 }
 
 // Get provider configuration
@@ -187,6 +217,96 @@ class AnthropicService implements AIService {
   }
 }
 
+// Groq implementation
+class GroqService implements AIService {
+  private client: Groq
+
+  constructor() {
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY environment variable is required')
+    }
+    this.client = new Groq({
+      apiKey: process.env.GROQ_API_KEY
+    })
+  }
+
+  private formatMessages(messages: Message[]): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
+    return messages.map(message => ({
+      role: (message.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: message.content
+    }))
+  }
+
+  async generateResponse(messages: Message[], tier: SubscriptionTier): Promise<string> {
+    const config = getProviderConfig('groq')
+    const model = config.models[tier]
+    const maxTokens = config.maxTokens[tier]
+    const formattedMessages = this.formatMessages(messages)
+
+    if (formattedMessages.length === 0) {
+      throw new Error('No messages provided')
+    }
+
+    const lastMessage = formattedMessages[formattedMessages.length - 1]
+    if (lastMessage.role !== 'user') {
+      throw new Error('Last message must be from user')
+    }
+
+    const response = await this.client.chat.completions.create({
+      model,
+      max_tokens: maxTokens,
+      messages: [
+        { role: 'system', content: config.systemPrompt },
+        ...formattedMessages
+      ]
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) {
+      throw new Error('No text content in AI response')
+    }
+
+    return content
+  }
+
+  async* generateStreamingResponse(messages: Message[], tier: SubscriptionTier): AsyncIterable<string> {
+    const config = getProviderConfig('groq')
+    const model = config.models[tier]
+    const maxTokens = config.maxTokens[tier]
+    const formattedMessages = this.formatMessages(messages)
+
+    if (formattedMessages.length === 0) {
+      throw new Error('No messages provided')
+    }
+
+    const lastMessage = formattedMessages[formattedMessages.length - 1]
+    if (lastMessage.role !== 'user') {
+      throw new Error('Last message must be from user')
+    }
+
+    const stream = await this.client.chat.completions.create({
+      model,
+      max_tokens: maxTokens,
+      messages: [
+        { role: 'system', content: config.systemPrompt },
+        ...formattedMessages
+      ],
+      stream: true
+    })
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content
+      if (content) {
+        yield content
+      }
+    }
+  }
+
+  estimateTokens(content: string): number {
+    return Math.ceil(content.length / 4)
+  }
+}
+
 // OpenAI implementation (placeholder)
 class OpenAIService implements AIService {
   constructor() {
@@ -282,12 +402,25 @@ function isValidAnthropicKey(key: string | undefined): boolean {
   return key.startsWith('sk-ant-') && key.length > 30
 }
 
+// Check if a Groq API key is valid
+function isValidGroqKey(key: string | undefined): boolean {
+  if (!key) return false
+  // Groq keys start with gsk_
+  return key.startsWith('gsk_') && key.length > 20
+}
+
 // Service factory
 export function createAIService(provider?: AIProvider): AIService {
   const currentProvider = provider || getCurrentProvider()
   
   // Fall back to mock service if no valid API key is configured
   switch (currentProvider) {
+    case 'groq':
+      if (isValidGroqKey(process.env.GROQ_API_KEY)) {
+        return new GroqService()
+      }
+      console.warn('⚠️  No valid GROQ_API_KEY found. Using mock AI responses for development.')
+      return new DevMockService()
     case 'anthropic':
       if (isValidAnthropicKey(process.env.ANTHROPIC_API_KEY)) {
         return new AnthropicService()
@@ -311,20 +444,30 @@ export function createAIService(provider?: AIProvider): AIService {
   }
 }
 
-// Lazy-initialized service instance
-let _aiService: AIService | null = null
+// Lazy-initialized service instances per provider
+const _services: Partial<Record<AIProvider, AIService>> = {}
+
+function getServiceForTier(tier: SubscriptionTier): AIService {
+  const provider = getProviderForTier(tier)
+  if (!_services[provider]) {
+    _services[provider] = createAIService(provider)
+  }
+  return _services[provider]!
+}
 
 export const aiService: AIService = {
   generateResponse(messages: Message[], tier: SubscriptionTier): Promise<string> {
-    if (!_aiService) _aiService = createAIService()
-    return _aiService.generateResponse(messages, tier)
+    return getServiceForTier(tier).generateResponse(messages, tier)
   },
   generateStreamingResponse(messages: Message[], tier: SubscriptionTier): AsyncIterable<string> {
-    if (!_aiService) _aiService = createAIService()
-    return _aiService.generateStreamingResponse(messages, tier)
+    return getServiceForTier(tier).generateStreamingResponse(messages, tier)
   },
   estimateTokens(content: string): number {
-    if (!_aiService) _aiService = createAIService()
-    return _aiService.estimateTokens(content)
+    // Token estimation doesn't depend on tier
+    const provider = getCurrentProvider()
+    if (!_services[provider]) {
+      _services[provider] = createAIService(provider)
+    }
+    return _services[provider]!.estimateTokens(content)
   }
 }

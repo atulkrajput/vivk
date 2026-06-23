@@ -35,7 +35,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     interval: 'month',
     features: [
       '20 messages per day',
-      'Claude Haiku AI model',
+      'Groq AI model (Fast)',
       '7-day chat history',
       'Basic support'
     ],
@@ -152,7 +152,7 @@ export function getSubscriptionBenefits(tier: SubscriptionTier): {
   
   return {
     messagesPerDay: plan.limits.dailyMessages === -1 ? 'Unlimited' : `${plan.limits.dailyMessages} per day`,
-    aiModel: plan.limits.aiModel === 'sonnet' ? 'Claude Sonnet (Advanced)' : 'Claude Haiku (Basic)',
+    aiModel: plan.limits.aiModel === 'sonnet' ? 'Claude Sonnet (Advanced)' : 'Groq Llama (Fast)',
     chatHistory: plan.limits.chatHistory === -1 ? 'Unlimited' : `${plan.limits.chatHistory} days`,
     features: plan.features
   }

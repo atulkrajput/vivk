@@ -12,7 +12,7 @@ export interface SubscriptionPlan {
   currency: 'INR'
   features: {
     dailyMessageLimit?: number
-    aiModel: 'claude-haiku' | 'claude-sonnet'
+    aiModel: 'groq-llama' | 'claude-haiku' | 'claude-sonnet'
     teamFeatures: boolean
     prioritySupport: boolean
     apiAccess: boolean
