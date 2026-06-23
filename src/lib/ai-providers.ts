@@ -239,8 +239,6 @@ class GroqService implements AIService {
 
   async generateResponse(messages: Message[], tier: SubscriptionTier): Promise<string> {
     const config = getProviderConfig('groq')
-    const model = config.models[tier]
-    const maxTokens = config.maxTokens[tier]
     const formattedMessages = this.formatMessages(messages)
 
     if (formattedMessages.length === 0) {
@@ -250,6 +248,20 @@ class GroqService implements AIService {
     const lastMessage = formattedMessages[formattedMessages.length - 1]
     if (lastMessage.role !== 'user') {
       throw new Error('Last message must be from user')
+    }
+
+    // Dynamic model selection based on task type
+    let model: string
+    let maxTokens: number
+    try {
+      const { selectModel } = await import('./model-router')
+      const selection = await selectModel(messages, tier)
+      model = selection.modelId
+      maxTokens = selection.model.max_output_tokens
+    } catch {
+      // Fallback if model router fails
+      model = process.env.GROQ_MODEL_NAME || config.models[tier]
+      maxTokens = config.maxTokens[tier]
     }
 
     const response = await this.client.chat.completions.create({
@@ -271,8 +283,6 @@ class GroqService implements AIService {
 
   async* generateStreamingResponse(messages: Message[], tier: SubscriptionTier): AsyncIterable<string> {
     const config = getProviderConfig('groq')
-    const model = config.models[tier]
-    const maxTokens = config.maxTokens[tier]
     const formattedMessages = this.formatMessages(messages)
 
     if (formattedMessages.length === 0) {
@@ -282,6 +292,20 @@ class GroqService implements AIService {
     const lastMessage = formattedMessages[formattedMessages.length - 1]
     if (lastMessage.role !== 'user') {
       throw new Error('Last message must be from user')
+    }
+
+    // Dynamic model selection based on task type
+    let model: string
+    let maxTokens: number
+    try {
+      const { selectModel } = await import('./model-router')
+      const selection = await selectModel(messages, tier)
+      model = selection.modelId
+      maxTokens = selection.model.max_output_tokens
+    } catch {
+      // Fallback if model router fails
+      model = process.env.GROQ_MODEL_NAME || config.models[tier]
+      maxTokens = config.maxTokens[tier]
     }
 
     const stream = await this.client.chat.completions.create({
