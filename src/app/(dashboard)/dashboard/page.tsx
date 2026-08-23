@@ -178,7 +178,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-6">
               <Link href="/chat" className="flex items-center">
-                <Image src="/vivk_logo.png" alt="VIVK" width={32} height={32} />
+                <Image src="/vivk_logo.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" />
               </Link>
               <nav className="hidden md:flex items-center gap-1">
                 <Link href="/chat" className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-vivk-navy hover:bg-slate-50 transition-colors">

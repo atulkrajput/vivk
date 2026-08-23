@@ -111,7 +111,7 @@ export default function RegisterPage() {
       <div className="hidden lg:flex lg:w-[45%] relative items-center justify-center p-12">
         <div className="relative max-w-md z-10">
           <div className="flex items-center mb-10">
-            <Image src="/vivk_logo.png" alt="VIVK" width={40} height={40} priority />
+            <Image src="/vivk_logo.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" priority />
           </div>
 
           <h2 className="text-3xl font-bold text-vivk-navy mb-3 leading-tight">Start your AI journey</h2>
@@ -153,7 +153,7 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center mb-8 lg:hidden">
-            <Image src="/vivk_logo.png" alt="VIVK" width={32} height={32} priority />
+            <Image src="/vivk_logo.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" priority />
           </div>
 
           <h1 className="text-2xl font-bold text-vivk-navy mb-1">Create your account</h1>

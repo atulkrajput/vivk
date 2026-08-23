@@ -39,7 +39,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Image src="/vivk_logo.png" alt="VIVK" width={36} height={36} priority />
+              <Image src="/vivk_logo.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" priority />
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-sm font-medium text-slate-600 hover:text-vivk-navy transition-colors">Features</a>
@@ -489,7 +489,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-10 mb-12">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <Image src="/vivk_logo.png" alt="VIVK" width={32} height={32} />
+                <Image src="/vivk_logo.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" />
               </div>
               <p className="text-sm leading-relaxed max-w-sm mb-4">
                 Intelligent AI workspace for writing, research, coding, business automation and everyday productivity. Built for India.
