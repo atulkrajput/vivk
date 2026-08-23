@@ -98,9 +98,8 @@ export default function ResetPasswordPage() {
     <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-8">
-          <Image src="/vivk_logo.png" alt="VIVK" width={32} height={32} priority />
-          <span className="text-xl font-bold vivk-gradient-text">VIVK</span>
+        <div className="flex items-center mb-8">
+          <Image src="/vivk_logo.png" alt="VIVK" width={36} height={36} priority />
         </div>
 
         {/* Icon */}

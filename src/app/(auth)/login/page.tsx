@@ -51,9 +51,8 @@ export default function LoginPage() {
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-[45%] relative items-center justify-center p-12">
         <div className="relative max-w-md z-10">
-          <div className="flex items-center gap-2.5 mb-10">
-            <Image src="/vivk_logo.png" alt="VIVK" width={36} height={36} priority />
-            <span className="text-2xl font-bold vivk-gradient-text">VIVK</span>
+          <div className="flex items-center mb-10">
+            <Image src="/vivk_logo.png" alt="VIVK" width={40} height={40} priority />
           </div>
 
           <h2 className="text-3xl font-bold text-vivk-navy mb-3 leading-tight">Welcome back</h2>
@@ -94,9 +93,8 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
-          <div className="flex items-center gap-2.5 mb-8 lg:hidden">
-            <Image src="/vivk_logo.png" alt="VIVK" width={28} height={28} priority />
-            <span className="text-lg font-bold vivk-gradient-text">VIVK</span>
+          <div className="flex items-center mb-8 lg:hidden">
+            <Image src="/vivk_logo.png" alt="VIVK" width={32} height={32} priority />
           </div>
 
           <h1 className="text-2xl font-bold text-vivk-navy mb-1">Sign in</h1>

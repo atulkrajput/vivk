@@ -307,9 +307,9 @@ export default function ChatPage() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 ml-3">
-            <Image src="/vivk_logo.png" alt="VIVK" width={20} height={20} />
+            <Image src="/vivk_logo.png" alt="VIVK" width={24} height={24} />
             <span className="text-sm font-medium text-white truncate">
-              {currentConversation?.title || 'VIVK'}
+              {currentConversation?.title || 'New Chat'}
             </span>
           </div>
         </div>

@@ -151,9 +151,8 @@ export function ConversationSidebar({
     <div className="w-72 bg-vivk-navy border-r border-white/[0.06] flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4">
-        <div className="flex items-center gap-2.5">
-          <Image src="/vivk_logo.png" alt="VIVK" width={24} height={24} />
-          <span className="font-semibold text-white text-sm tracking-wide">VIVK</span>
+        <div className="flex items-center">
+          <Image src="/vivk_logo.png" alt="VIVK" width={28} height={28} />
         </div>
         <button
           onClick={onToggleCollapse}
