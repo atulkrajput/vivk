@@ -307,7 +307,7 @@ export default function ChatPage() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 ml-3">
-            <Image src="/vivk_logo.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" />
+            <Image src="/logo_white.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" />
             <span className="text-sm font-medium text-white truncate">
               {currentConversation?.title || 'New Chat'}
             </span>
