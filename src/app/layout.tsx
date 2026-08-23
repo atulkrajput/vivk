@@ -1,20 +1,28 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
-import { Inter } from 'next/font/google'
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
-
 const GA_ID = 'G-HLL0TPB32L'
 
 export const metadata: Metadata = {
-  title: 'VIVK - India\'s Smartest AI Assistant',
-  description: 'Virtual Intelligent Versatile Knowledge - AI-powered assistant built for India',
+  title: 'VIVK — AI Workspace for Work, Business & Creativity',
+  description: 'VIVK is an intelligent AI workspace for writing, research, coding, business automation and everyday productivity.',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/logo-icon.svg',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
+  openGraph: {
+    title: 'VIVK — AI Workspace for Work, Business & Creativity',
+    description: 'VIVK is an intelligent AI workspace for writing, research, coding, business automation and everyday productivity.',
+    siteName: 'VIVK',
+    type: 'website',
   },
 }
 
@@ -26,6 +34,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
           strategy="afterInteractive"
@@ -39,7 +49,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={inter.className}>
+      <body className="font-sans antialiased">
         <ErrorBoundary>
           <SessionProvider>
             {children}

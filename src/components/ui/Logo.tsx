@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { cn } from '@/lib/utils'
 
 interface LogoProps {
   variant?: 'default' | 'white' | 'icon'
@@ -13,36 +14,33 @@ export function Logo({
   className = '',
   showText = true 
 }: LogoProps) {
-  const sizeClasses = {
-    sm: 'h-6 w-auto',
-    md: 'h-8 w-auto', 
-    lg: 'h-12 w-auto',
-    xl: 'h-16 w-auto'
+  const sizeMap = {
+    sm: { img: 24, text: 'text-lg' },
+    md: { img: 32, text: 'text-xl' },
+    lg: { img: 40, text: 'text-2xl' },
+    xl: { img: 48, text: 'text-3xl' },
   }
 
-  const logoSrc = {
-    default: '/logo.svg',
-    white: '/logo_white.svg',
-    icon: '/favicon.svg'
-  }
+  const { img, text } = sizeMap[size]
 
   return (
-    <div className={`flex items-center ${className}`}>
+    <div className={cn('flex items-center gap-2', className)}>
       <Image
-        src={logoSrc[variant]}
-        alt="VIVK Logo"
-        width={32}
-        height={32}
-        className={sizeClasses[size]}
+        src="/vivk_logo.png"
+        alt="VIVK"
+        width={img}
+        height={img}
+        className="object-contain"
         priority
       />
       {showText && (
-        <>
-          <span className="text-2xl font-bold gradient-text ml-2">VIVK</span>
-          <span className="ml-2 text-sm text-gray-600 hidden sm:inline">
-            Virtual Intelligent Versatile Knowledge
-          </span>
-        </>
+        <span className={cn(
+          text,
+          'font-bold tracking-tight',
+          variant === 'white' ? 'text-white' : 'vivk-gradient-text'
+        )}>
+          VIVK
+        </span>
       )}
     </div>
   )

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
-import { Logo } from '@/components/ui/Logo'
+import Image from 'next/image'
+import { AlertCircle, CheckCircle, ArrowLeft, KeyRound } from 'lucide-react'
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('')
@@ -21,7 +21,6 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (token) {
-      // Verify token
       fetch(`/api/auth/reset-password?token=${token}`)
         .then(res => res.json())
         .then(data => {
@@ -46,9 +45,7 @@ export default function ResetPasswordPage() {
     try {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
 
@@ -56,14 +53,13 @@ export default function ResetPasswordPage() {
 
       if (response.ok) {
         setSuccess(data.message)
-        // Show reset link in development
         if (data.resetLink) {
           setSuccess(`${data.message}\n\nDevelopment link: ${data.resetLink}`)
         }
       } else {
         setError(data.error || 'Failed to send reset email. Please try again.')
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred. Please try again.')
     } finally {
       setIsLoading(false)
@@ -79,28 +75,19 @@ export default function ResetPasswordPage() {
     try {
       const response = await fetch('/api/auth/update-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          password,
-          confirmPassword,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password, confirmPassword }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
         setSuccess(data.message)
-        // Redirect to login after 2 seconds
-        setTimeout(() => {
-          router.push('/login')
-        }, 2000)
+        setTimeout(() => router.push('/login'), 2000)
       } else {
         setError(data.error || 'Failed to reset password. Please try again.')
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred. Please try again.')
     } finally {
       setIsLoading(false)
@@ -108,131 +95,146 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
-            <Logo size="lg" />
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {mode === 'request' ? 'Reset your password' : 'Set new password'}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            <Link
-              href="/login"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              Back to sign in
-            </Link>
-          </p>
+    <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 mb-8">
+          <Image src="/vivk_logo.png" alt="VIVK" width={32} height={32} priority />
+          <span className="text-xl font-bold vivk-gradient-text">VIVK</span>
         </div>
+
+        {/* Icon */}
+        <div className="w-12 h-12 rounded-xl bg-vivk-blue/[0.08] flex items-center justify-center mb-5">
+          <KeyRound className="w-6 h-6 text-vivk-blue" />
+        </div>
+
+        <h1 className="text-2xl font-bold text-vivk-navy mb-1">
+          {mode === 'request' ? 'Reset your password' : 'Set new password'}
+        </h1>
+        <p className="text-sm text-slate-500 mb-8">
+          {mode === 'request'
+            ? 'Enter your email and we\'ll send you a reset link.'
+            : 'Choose a new password for your account.'
+          }
+        </p>
         
         {mode === 'request' ? (
-          <form className="mt-8 space-y-6" onSubmit={handleRequestReset}>
+          <form onSubmit={handleRequestReset} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              <div className="flex items-center gap-2.5 p-3.5 bg-red-50 border border-red-100 rounded-[12px] text-sm text-red-700">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
             )}
             
             {success && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded whitespace-pre-line">
-                {success}
+              <div className="flex items-start gap-2.5 p-3.5 bg-emerald-50 border border-emerald-100 rounded-[12px] text-sm text-emerald-700 whitespace-pre-line">
+                <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{success}</span>
               </div>
             )}
             
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Email address
               </label>
               <input
                 id="email"
-                name="email"
                 type="email"
                 autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your email"
+                className="w-full vivk-input"
+                placeholder="you@example.com"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                We'll send you a link to reset your password
+              <p className="mt-1.5 text-xs text-slate-400">
+                We&apos;ll send you a link to reset your password
               </p>
             </div>
 
-            <div>
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {isLoading ? 'Sending...' : 'Send reset link'}
-              </Button>
-            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full vivk-btn-primary py-3 text-sm"
+            >
+              {isLoading ? 'Sending...' : 'Send reset link'}
+            </button>
+
+            <Link
+              href="/login"
+              className="flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-vivk-navy font-medium transition-colors pt-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to sign in
+            </Link>
           </form>
         ) : (
-          <form className="mt-8 space-y-6" onSubmit={handleResetPassword}>
+          <form onSubmit={handleResetPassword} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              <div className="flex items-center gap-2.5 p-3.5 bg-red-50 border border-red-100 rounded-[12px] text-sm text-red-700">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
             )}
             
             {success && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+              <div className="flex items-center gap-2.5 p-3.5 bg-emerald-50 border border-emerald-100 rounded-[12px] text-sm text-emerald-700">
+                <CheckCircle className="w-4 h-4 flex-shrink-0" />
                 {success}
               </div>
             )}
             
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  New Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter new password"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Must be at least 8 characters with uppercase, lowercase, and number
-                </p>
-              </div>
-              
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  Confirm New Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Confirm new password"
-                />
-              </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1.5">
+                New Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full vivk-input"
+                placeholder="Enter new password"
+              />
+              <p className="mt-1.5 text-xs text-slate-400">
+                Must be at least 8 characters with uppercase, lowercase, and number
+              </p>
+            </div>
+            
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Confirm New Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full vivk-input"
+                placeholder="Confirm new password"
+              />
             </div>
 
-            <div>
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {isLoading ? 'Updating...' : 'Update password'}
-              </Button>
-            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full vivk-btn-primary py-3 text-sm"
+            >
+              {isLoading ? 'Updating...' : 'Update password'}
+            </button>
+
+            <Link
+              href="/login"
+              className="flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-vivk-navy font-medium transition-colors pt-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to sign in
+            </Link>
           </form>
         )}
       </div>

@@ -4,6 +4,20 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
+import { 
+  MessageSquare, 
+  BarChart3, 
+  MessageCircle, 
+  Star,
+  CreditCard,
+  Settings,
+  ArrowRight,
+  Sparkles,
+  FileText,
+  Code2,
+  Search
+} from 'lucide-react'
 import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard'
 import { UsageStats } from '@/components/dashboard/UsageStats'
 import { AccountSettings } from '@/components/dashboard/AccountSettings'
@@ -58,14 +72,12 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'conversations' | 'billing' | 'settings'>('overview')
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     }
   }, [status, router])
 
-  // Load dashboard data
   useEffect(() => {
     if (session?.user) {
       fetchDashboardData()
@@ -77,7 +89,6 @@ export default function DashboardPage() {
       setIsLoading(true)
       setError(null)
 
-      // Fetch all dashboard data in parallel
       const [subscriptionRes, usageRes, conversationsRes, paymentsRes, userRes] = await Promise.all([
         fetch('/api/subscriptions'),
         fetch('/api/usage'),
@@ -107,8 +118,8 @@ export default function DashboardPage() {
         },
         subscription: subscriptionData.subscription,
         usage: usageData.usage,
-        conversations: conversationsData.conversations?.slice(0, 5) || [], // Show recent 5
-        payments: paymentsData.payments?.slice(0, 5) || [] // Show recent 5
+        conversations: conversationsData.conversations?.slice(0, 5) || [],
+        payments: paymentsData.payments?.slice(0, 5) || []
       })
 
     } catch (error) {
@@ -125,33 +136,28 @@ export default function DashboardPage() {
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-vivk-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="w-10 h-10 mx-auto mb-4 rounded-xl bg-vivk-gradient flex items-center justify-center animate-pulse">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <p className="text-slate-500 text-sm">Loading dashboard...</p>
         </div>
       </div>
     )
   }
 
-  if (!session) {
-    return null
-  }
+  if (!session) return null
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">
-            <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-lg font-medium">{error}</p>
+      <div className="min-h-screen bg-vivk-bg flex items-center justify-center">
+        <div className="text-center vivk-card p-8 max-w-sm">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-red-50 flex items-center justify-center">
+            <MessageCircle className="w-6 h-6 text-red-500" />
           </div>
-          <button
-            onClick={fetchDashboardData}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-          >
+          <p className="text-lg font-semibold text-vivk-navy mb-2">{error}</p>
+          <button onClick={fetchDashboardData} className="vivk-btn-primary mt-4 text-sm">
             Try Again
           </button>
         </div>
@@ -159,90 +165,101 @@ export default function DashboardPage() {
     )
   }
 
-  if (!dashboardData) {
-    return null
-  }
+  if (!dashboardData) return null
+
+  const userName = dashboardData.user.email.split('@')[0]
+  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-vivk-bg">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/chat" className="text-2xl font-bold text-blue-600">
-                VIVK
+            <div className="flex items-center gap-6">
+              <Link href="/chat" className="flex items-center gap-2">
+                <Image src="/vivk_logo.png" alt="VIVK" width={28} height={28} />
+                <span className="text-lg font-bold vivk-gradient-text">VIVK</span>
               </Link>
-              <nav className="ml-8 flex space-x-8">
-                <Link
-                  href="/chat"
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Chat
+              <nav className="hidden md:flex items-center gap-1">
+                <Link href="/chat" className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-vivk-navy hover:bg-slate-50 transition-colors">
+                  <span className="flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Chat</span>
                 </Link>
-                <Link
-                  href="/dashboard"
-                  className="text-blue-600 px-3 py-2 rounded-md text-sm font-medium bg-blue-50"
-                >
-                  Dashboard
+                <Link href="/dashboard" className="px-3 py-2 rounded-lg text-sm font-medium text-vivk-blue bg-vivk-blue/[0.06]">
+                  <span className="flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Dashboard</span>
                 </Link>
-                <Link
-                  href="/billing"
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Billing
+                <Link href="/billing" className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-vivk-navy hover:bg-slate-50 transition-colors">
+                  <span className="flex items-center gap-2"><CreditCard className="w-4 h-4" /> Billing</span>
                 </Link>
               </nav>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:inline text-sm text-slate-500">
                 {dashboardData.user.email}
               </span>
-              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+              <div className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                 dashboardData.subscription.plan.popular 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'bg-gray-100 text-gray-800'
+                  ? 'bg-vivk-blue/10 text-vivk-blue' 
+                  : 'bg-slate-100 text-slate-600'
               }`}>
                 {dashboardData.subscription.plan.name}
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {dashboardData.user.email.split('@')[0]}!
+          <h1 className="text-3xl font-bold text-vivk-navy">
+            {greeting}, {userName}
           </h1>
-          <p className="mt-2 text-gray-600">
-            Here's an overview of your VIVK account and usage
+          <p className="mt-1 text-slate-500">
+            What would you like to accomplish today?
           </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          {[
+            { icon: Sparkles, title: 'Ask VIVK', desc: 'Start a conversation', href: '/chat', color: 'text-vivk-blue', bg: 'bg-vivk-blue/[0.06]' },
+            { icon: FileText, title: 'Create Content', desc: 'Write with AI', href: '/chat', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { icon: Search, title: 'Analyze', desc: 'Get insights', href: '/chat', color: 'text-vivk-violet', bg: 'bg-vivk-violet/[0.06]' },
+            { icon: Code2, title: 'Code', desc: 'Build & debug', href: '/chat', color: 'text-amber-600', bg: 'bg-amber-50' },
+          ].map((action) => (
+            <Link key={action.title} href={action.href} className="vivk-card p-4 vivk-card-hover group">
+              <div className={`w-9 h-9 rounded-lg ${action.bg} flex items-center justify-center mb-3`}>
+                <action.icon className={`w-4.5 h-4.5 ${action.color}`} />
+              </div>
+              <p className="text-sm font-semibold text-vivk-navy group-hover:text-vivk-blue transition-colors">{action.title}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{action.desc}</p>
+            </Link>
+          ))}
         </div>
 
         {/* Tabs */}
         <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
+          <div className="border-b border-slate-200">
+            <nav className="flex gap-1 -mb-px">
               {[
-                { id: 'overview', name: 'Overview', icon: '📊' },
-                { id: 'conversations', name: 'Conversations', icon: '💬' },
-                { id: 'billing', name: 'Billing', icon: '💳' },
-                { id: 'settings', name: 'Settings', icon: '⚙️' }
+                { id: 'overview', name: 'Overview', icon: BarChart3 },
+                { id: 'conversations', name: 'Conversations', icon: MessageCircle },
+                { id: 'billing', name: 'Billing', icon: CreditCard },
+                { id: 'settings', name: 'Settings', icon: Settings }
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center gap-2 py-3 px-4 border-b-2 text-sm font-medium transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-vivk-blue text-vivk-blue'
+                      : 'border-transparent text-slate-500 hover:text-vivk-navy hover:border-slate-300'
                   }`}
                 >
-                  <span className="mr-2">{tab.icon}</span>
+                  <tab.icon className="w-4 h-4" />
                   {tab.name}
                 </button>
               ))}
@@ -252,108 +269,63 @@ export default function DashboardPage() {
 
         {/* Tab Content */}
         {activeTab === 'overview' && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-fade-in">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 text-sm">💬</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { icon: MessageSquare, label: "Today's Messages", value: dashboardData.usage.todayUsage, suffix: dashboardData.usage.dailyLimit > 0 ? `/${dashboardData.usage.dailyLimit}` : '', color: 'text-vivk-blue', bg: 'bg-vivk-blue/[0.08]' },
+                { icon: BarChart3, label: 'This Month', value: dashboardData.usage.monthlyUsage, suffix: '', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                { icon: MessageCircle, label: 'Total Conversations', value: dashboardData.user.totalConversations, suffix: '', color: 'text-vivk-violet', bg: 'bg-vivk-violet/[0.06]' },
+                { icon: Star, label: 'Plan', value: dashboardData.subscription.plan.name, suffix: '', color: 'text-amber-600', bg: 'bg-amber-50' },
+              ].map((stat) => (
+                <div key={stat.label} className="vivk-card p-5">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                      <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+                      <p className="text-xl font-bold text-vivk-navy">
+                        {stat.value}
+                        {stat.suffix && <span className="text-sm text-slate-400 font-normal">{stat.suffix}</span>}
+                      </p>
                     </div>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Today's Messages</p>
-                    <p className="text-2xl font-semibold text-gray-900">
-                      {dashboardData.usage.todayUsage}
-                      {dashboardData.usage.dailyLimit > 0 && (
-                        <span className="text-sm text-gray-500">/{dashboardData.usage.dailyLimit}</span>
-                      )}
-                    </p>
-                  </div>
                 </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                      <span className="text-green-600 text-sm">📈</span>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">This Month</p>
-                    <p className="text-2xl font-semibold text-gray-900">{dashboardData.usage.monthlyUsage}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <span className="text-purple-600 text-sm">🗨️</span>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Conversations</p>
-                    <p className="text-2xl font-semibold text-gray-900">{dashboardData.user.totalConversations}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                      <span className="text-yellow-600 text-sm">⭐</span>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Plan</p>
-                    <p className="text-2xl font-semibold text-gray-900">{dashboardData.subscription.plan.name}</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* Main Dashboard Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column */}
-              <div className="lg:col-span-2 space-y-8">
+              <div className="lg:col-span-2 space-y-6">
                 {/* Usage Statistics */}
                 <UsageStats />
 
                 {/* Recent Conversations */}
-                <div className="bg-white rounded-lg shadow">
-                  <div className="p-6 border-b border-gray-200">
+                <div className="vivk-card overflow-hidden">
+                  <div className="p-5 border-b border-slate-100">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900">Recent Conversations</h3>
-                      <Link
-                        href="/chat"
-                        className="text-sm text-blue-600 hover:text-blue-700"
-                      >
-                        View all
+                      <h3 className="text-base font-semibold text-vivk-navy">Recent Conversations</h3>
+                      <Link href="/chat" className="text-xs text-vivk-blue hover:text-blue-700 font-medium flex items-center gap-1 transition-colors">
+                        View all <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>
                   </div>
-                  <div className="p-6">
+                  <div className="p-5">
                     {dashboardData.conversations.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {dashboardData.conversations.map((conversation) => (
-                          <div key={conversation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div key={conversation.id} className="flex items-center justify-between p-3.5 rounded-xl bg-vivk-bg hover:bg-slate-100 transition-colors">
                             <div>
-                              <h4 className="font-medium text-gray-900">{conversation.title}</h4>
-                              <p className="text-sm text-gray-600">{conversation.messageCount} messages</p>
+                              <h4 className="text-sm font-medium text-vivk-navy">{conversation.title}</h4>
+                              <p className="text-xs text-slate-500 mt-0.5">{conversation.messageCount} messages</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm text-gray-500">
+                              <p className="text-xs text-slate-400">
                                 {new Date(conversation.lastActivity).toLocaleDateString()}
                               </p>
-                              <Link
-                                href={`/chat?conversation=${conversation.id}`}
-                                className="text-sm text-blue-600 hover:text-blue-700"
-                              >
+                              <Link href={`/chat?conversation=${conversation.id}`} className="text-xs text-vivk-blue hover:text-blue-700 font-medium transition-colors">
                                 Continue
                               </Link>
                             </div>
@@ -362,11 +334,11 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <p className="text-gray-500">No conversations yet</p>
-                        <Link
-                          href="/chat"
-                          className="mt-2 inline-block text-blue-600 hover:text-blue-700"
-                        >
+                        <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-50 flex items-center justify-center">
+                          <MessageSquare className="w-6 h-6 text-slate-300" />
+                        </div>
+                        <p className="text-sm text-slate-500 mb-2">No conversations yet</p>
+                        <Link href="/chat" className="text-sm text-vivk-blue hover:text-blue-700 font-medium transition-colors">
                           Start your first conversation
                         </Link>
                       </div>
@@ -376,7 +348,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Right Column */}
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Subscription Card */}
                 <SubscriptionCard
                   currentTier={dashboardData.subscription.tier}
@@ -387,26 +359,20 @@ export default function DashboardPage() {
                 />
 
                 {/* Quick Actions */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="space-y-3">
-                    <Link
-                      href="/chat"
-                      className="block w-full text-left px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100"
-                    >
-                      🚀 Start New Chat
+                <div className="vivk-card p-5">
+                  <h3 className="text-base font-semibold text-vivk-navy mb-4">Quick Actions</h3>
+                  <div className="space-y-2">
+                    <Link href="/chat" className="flex items-center gap-3 w-full text-left px-4 py-3 bg-vivk-blue/[0.04] text-vivk-blue rounded-xl hover:bg-vivk-blue/[0.08] transition-colors">
+                      <Sparkles className="w-4 h-4" />
+                      <span className="text-sm font-medium">Start New Chat</span>
                     </Link>
-                    <Link
-                      href="/billing"
-                      className="block w-full text-left px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100"
-                    >
-                      💳 Manage Billing
+                    <Link href="/billing" className="flex items-center gap-3 w-full text-left px-4 py-3 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-colors">
+                      <CreditCard className="w-4 h-4" />
+                      <span className="text-sm font-medium">Manage Billing</span>
                     </Link>
-                    <button
-                      onClick={() => setActiveTab('settings')}
-                      className="block w-full text-left px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100"
-                    >
-                      ⚙️ Account Settings
+                    <button onClick={() => setActiveTab('settings')} className="flex items-center gap-3 w-full text-left px-4 py-3 bg-slate-50 text-slate-700 rounded-xl hover:bg-slate-100 transition-colors">
+                      <Settings className="w-4 h-4" />
+                      <span className="text-sm font-medium">Account Settings</span>
                     </button>
                   </div>
                 </div>
@@ -416,11 +382,13 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'conversations' && (
-          <ConversationsList />
+          <div className="animate-fade-in">
+            <ConversationsList />
+          </div>
         )}
 
         {activeTab === 'billing' && (
-          <div className="space-y-8">
+          <div className="space-y-6 animate-fade-in">
             <SubscriptionCard
               currentTier={dashboardData.subscription.tier}
               currentStatus={dashboardData.subscription.status}
@@ -433,7 +401,9 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'settings' && (
-          <AccountSettings user={dashboardData.user} />
+          <div className="animate-fade-in">
+            <AccountSettings user={dashboardData.user} />
+          </div>
         )}
       </div>
     </div>

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { Menu, Sparkles } from 'lucide-react'
 import { ChatInterface } from '@/components/chat/ChatInterface'
 import { ConversationSidebar } from '@/components/chat/ConversationSidebar'
 import type { Message, Conversation, ConversationWithMessageCount } from '@/types/database.types'
@@ -248,13 +250,12 @@ export default function ChatPage() {
 
   if (status === 'loading') {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0a0a0f]">
+      <div className="h-screen flex items-center justify-center bg-vivk-navy">
         <div className="text-center">
-          <div className="relative w-12 h-12 mx-auto mb-4">
-            <div className="absolute inset-0 rounded-full border-2 border-blue-500/20"></div>
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 animate-spin"></div>
+          <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-vivk-gradient flex items-center justify-center animate-pulse shadow-vivk-glow">
+            <Sparkles className="w-6 h-6 text-white" />
           </div>
-          <p className="text-gray-400 text-sm">Loading VIVK...</p>
+          <p className="text-slate-400 text-sm">Loading VIVK...</p>
         </div>
       </div>
     )
@@ -263,7 +264,7 @@ export default function ChatPage() {
   if (!session) return null
 
   return (
-    <div className="h-screen flex bg-[#0f0f17] overflow-hidden">
+    <div className="h-screen flex bg-vivk-navy overflow-hidden">
       {/* Mobile sidebar overlay */}
       {isMobileSidebarOpen && (
         <div
@@ -297,25 +298,27 @@ export default function ChatPage() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <div className="lg:hidden flex items-center px-4 py-3 border-b border-white/5 bg-[#0f0f17]">
+        <div className="lg:hidden flex items-center px-4 py-3 border-b border-white/[0.06] bg-vivk-navy">
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
-            className="p-2 -ml-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 -ml-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            aria-label="Open sidebar"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
+            <Menu className="w-5 h-5" />
           </button>
-          <span className="ml-3 text-sm font-medium text-white truncate">
-            {currentConversation?.title || 'VIVK'}
-          </span>
+          <div className="flex items-center gap-2 ml-3">
+            <Image src="/vivk_logo.png" alt="VIVK" width={20} height={20} />
+            <span className="text-sm font-medium text-white truncate">
+              {currentConversation?.title || 'VIVK'}
+            </span>
+          </div>
         </div>
 
         {/* Error banner */}
         {error && (
           <div className="mx-4 mt-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between">
             <p className="text-sm text-red-400">{error}</p>
-            <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-400 ml-3">
+            <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-400 ml-3" aria-label="Dismiss error">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
