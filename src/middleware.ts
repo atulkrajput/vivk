@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Public routes - no auth or rate limiting needed
-  const isPublicPage = ['/', '/landing', '/login', '/register', '/reset-password', '/maintenance']
+  const isPublicPage = ['/', '/landing', '/login', '/register', '/reset-password', '/maintenance', '/privacy', '/terms', '/refund-policy']
     .some(route => pathname === route)
   const isAuthApi = pathname.startsWith('/api/auth')
   const isPublicApi = pathname.startsWith('/api/health') || pathname.startsWith('/api/debug') || pathname.startsWith('/api/payments/webhook') || pathname.startsWith('/api/plans')

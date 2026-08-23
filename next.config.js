@@ -152,15 +152,7 @@ const nextConfig = {
   },
   
   async rewrites() {
-    const rewrites = [
-      // Preserve the current landing page at root
-      {
-        source: '/',
-        destination: '/landing'
-      }
-    ]
-    
-    return rewrites
+    return []
   }
 }
 
