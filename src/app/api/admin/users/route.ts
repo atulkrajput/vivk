@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { isAdminEmail } from '@/lib/admin'
-import { db } from '@/lib/db'
+import { rawQuery } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,27 +31,32 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const [countResult] = await db.query(
+    const countRows = await rawQuery(
       `SELECT COUNT(*) as total FROM users u ${whereClause}`,
       params
-    ) as any[]
-    const total = countResult?.[0]?.total || 0
+    )
+    const total = Number(countRows?.[0]?.total || 0)
 
-    // Get users with message count
-    const [users] = await db.query(
+    // Get users with message count.
+    // Note: LIMIT/OFFSET are inlined as integers because mysql2 prepared
+    // statements can reject them as bound params in some MySQL versions.
+    const safeLimit = Math.max(1, Math.min(limit, 100))
+    const safeOffset = Math.max(0, offset)
+
+    const users = await rawQuery(
       `SELECT u.id, u.email, u.full_name, u.phone, u.subscription_tier, u.subscription_status, u.created_at,
               (SELECT COUNT(*) FROM messages m JOIN conversations c ON m.conversation_id = c.id WHERE c.user_id = u.id) as message_count
        FROM users u ${whereClause}
        ORDER BY u.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, limit, offset]
-    ) as any[]
+       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+      params
+    )
 
     return NextResponse.json({
       users: users || [],
       total,
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.max(1, Math.ceil(total / limit)),
     })
   } catch (error) {
     console.error('Admin users error:', error)

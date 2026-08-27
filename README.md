@@ -112,21 +112,71 @@ See `.env.example` for all required environment variables:
 - Caching: Upstash Redis URL and token
 - Email: Resend API key
 
+## � Admin Panel
+
+The admin panel is accessible at `/admin` and restricted to users with `@vivk.in` email addresses.
+
+**Access URL:** `https://www.vivk.in/admin`
+
+**Authentication:** Server-side check — only users whose email ends with `@vivk.in` can access the admin panel. Non-admin users are redirected to `/chat`.
+
+### Admin Pages
+
+| Route | Description |
+|-------|-------------|
+| `/admin` | Dashboard overview — total users, active subscriptions, monthly revenue, messages, AI tokens used, error rate |
+| `/admin/users` | User management — search, filter by plan, view details, message counts, pagination |
+| `/admin/subscriptions` | Subscription tracking — plan distribution, revenue metrics, recent paid users list |
+| `/admin/tracking` | Tracking codes — manage Google Analytics, Facebook Pixel, GTM, and custom scripts |
+| `/admin/plans` | Plan management — edit pricing, daily message limits, AI model assignment, enable/disable plans |
+| `/admin/ai-keys` | AI key management — configure Anthropic/Groq/OpenAI keys, view usage, set monthly limits |
+| `/admin/errors` | Error & usage tracking — API error logs by severity, daily usage history (messages, tokens, active users) |
+| `/admin/settings` | Platform settings — maintenance mode toggle, platform info |
+
+### Admin API Endpoints
+
+All admin APIs require authentication and `@vivk.in` email verification:
+
+- `GET /api/admin/dashboard` — Platform metrics
+- `GET /api/admin/users` — List users (supports `?search=`, `?tier=`, `?page=`)
+- `GET /api/admin/subscriptions` — Subscription stats and recent paid users
+- `GET/POST /api/admin/tracking` — Read/write tracking code configuration
+- `GET/POST /api/admin/plans` — Read/write plan configuration
+- `GET/POST /api/admin/ai-keys` — AI provider key management
+- `GET /api/admin/errors` — Error logs and usage history
+- `GET/POST /api/admin/maintenance` — Maintenance mode control
+
+### Adding Admin Users
+
+Admin access is controlled in `src/lib/admin.ts`. To grant admin access:
+
+1. Add the email to the `ADMIN_EMAILS` array, or
+2. Use any email with the `@vivk.in` domain
+
+```typescript
+// src/lib/admin.ts
+const ADMIN_EMAILS = ['admin@vivk.in', 'atul@vivk.in']
+const ADMIN_DOMAIN = '@vivk.in'
+```
+
 ## 📊 Current Status
 
-✅ **Completed (Task 1)**:
-- Next.js 14 project setup with TypeScript
-- Tailwind CSS configuration
-- Landing page migration from static HTML
-- Basic project structure and dependencies
-- Development environment setup
+✅ **Completed**:
+- Next.js 15 project with TypeScript and App Router
+- Tailwind CSS with VIVK design system
+- Landing page at root (/)
+- Authentication (login, register, reset-password)
+- AI chat interface with streaming
+- Dashboard with usage stats
+- Subscription & billing management
+- Razorpay payment integration
+- Admin panel with full platform management
+- Privacy Policy, Terms of Service, Refund Policy pages
 
-🚧 **In Progress**:
-- Database schema implementation
-- Authentication system
-- Chat interface
-- AI integration
-- Payment system
+🚧 **Planned**:
+- Team collaboration features (Business plan)
+- Multi-language support
+- Advanced analytics dashboard
 
 ## 🚀 Deployment
 

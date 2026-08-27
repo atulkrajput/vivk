@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { isAdminEmail } from '@/lib/admin'
-import { db } from '@/lib/db'
+import { rawQuery } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get usage logs for the last 14 days
-    const [usageRows] = await db.query(`
+    const usageRows = await rawQuery(`
       SELECT 
         date,
         SUM(message_count) as totalMessages,
@@ -21,13 +21,13 @@ export async function GET(request: NextRequest) {
       WHERE date >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
       GROUP BY date
       ORDER BY date DESC
-    `) as any[]
+    `)
 
     const usageLogs = (usageRows || []).map((row: any) => ({
       date: row.date,
-      totalMessages: row.totalMessages || 0,
-      totalTokens: row.totalTokens || 0,
-      uniqueUsers: row.uniqueUsers || 0,
+      totalMessages: Number(row.totalMessages || 0),
+      totalTokens: Number(row.totalTokens || 0),
+      uniqueUsers: Number(row.uniqueUsers || 0),
       errors: 0, // Would come from error tracking table if implemented
     }))
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { isAdminEmail } from '@/lib/admin'
-import { db } from '@/lib/db'
+import { rawQuery } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,40 +11,40 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch metrics from database
-    const [usersResult] = await db.query('SELECT COUNT(*) as total FROM users') as any[]
-    const totalUsers = usersResult?.[0]?.total || 0
+    const usersRows = await rawQuery('SELECT COUNT(*) as total FROM users')
+    const totalUsers = usersRows?.[0]?.total || 0
 
-    const [newTodayResult] = await db.query(
+    const newTodayRows = await rawQuery(
       'SELECT COUNT(*) as total FROM users WHERE DATE(created_at) = CURDATE()'
-    ) as any[]
-    const newUsersToday = newTodayResult?.[0]?.total || 0
+    )
+    const newUsersToday = newTodayRows?.[0]?.total || 0
 
-    const [subsResult] = await db.query(
+    const subsRows = await rawQuery(
       "SELECT COUNT(*) as total FROM users WHERE subscription_tier IN ('pro', 'business') AND subscription_status = 'active'"
-    ) as any[]
-    const activeSubscriptions = subsResult?.[0]?.total || 0
+    )
+    const activeSubscriptions = subsRows?.[0]?.total || 0
 
-    const [messagesResult] = await db.query('SELECT COUNT(*) as total FROM messages') as any[]
-    const totalMessages = messagesResult?.[0]?.total || 0
+    const messagesRows = await rawQuery('SELECT COUNT(*) as total FROM messages')
+    const totalMessages = messagesRows?.[0]?.total || 0
 
-    const [messagesTodayResult] = await db.query(
+    const messagesTodayRows = await rawQuery(
       'SELECT COUNT(*) as total FROM messages WHERE DATE(created_at) = CURDATE()'
-    ) as any[]
-    const messagesToday = messagesTodayResult?.[0]?.total || 0
+    )
+    const messagesToday = messagesTodayRows?.[0]?.total || 0
 
-    const [tokensResult] = await db.query(
+    const tokensRows = await rawQuery(
       'SELECT COALESCE(SUM(tokens_used), 0) as total FROM usage_logs'
-    ) as any[]
-    const aiTokensUsed = tokensResult?.[0]?.total || 0
+    )
+    const aiTokensUsed = Number(tokensRows?.[0]?.total || 0)
 
     // Calculate monthly revenue (Pro = 999, Business = 4999)
-    const [revenueResult] = await db.query(`
+    const revenueRows = await rawQuery(`
       SELECT 
-        SUM(CASE WHEN subscription_tier = 'pro' THEN 999 WHEN subscription_tier = 'business' THEN 4999 ELSE 0 END) as revenue
+        COALESCE(SUM(CASE WHEN subscription_tier = 'pro' THEN 999 WHEN subscription_tier = 'business' THEN 4999 ELSE 0 END), 0) as revenue
       FROM users 
       WHERE subscription_tier IN ('pro', 'business') AND subscription_status = 'active'
-    `) as any[]
-    const monthlyRevenue = revenueResult?.[0]?.revenue || 0
+    `)
+    const monthlyRevenue = Number(revenueRows?.[0]?.revenue || 0)
 
     return NextResponse.json({
       metrics: {
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         monthlyRevenue,
         totalMessages,
         messagesToday,
-        errorRate: 0.12, // Placeholder - would come from error tracking
+        errorRate: 0,
         aiTokensUsed,
       }
     })

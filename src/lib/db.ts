@@ -53,6 +53,11 @@ async function query<T>(sql: string, params?: any[]): Promise<T[]> {
   return rows as T[]
 }
 
+// Exported raw query helper for direct SQL access (used by admin routes)
+export async function rawQuery<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  return query<T>(sql, params)
+}
+
 async function queryOne<T>(sql: string, params?: any[]): Promise<T | null> {
   const rows = await query<T>(sql, params)
   return rows[0] || null
