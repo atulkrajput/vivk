@@ -12,6 +12,8 @@ interface UserRecord {
   subscription_status: string
   created_at: string
   message_count: number
+  session_count: number
+  tokens_used: number
 }
 
 export default function AdminUsersPage() {
@@ -128,7 +130,9 @@ export default function AdminUsersPage() {
                 <th className="text-left px-5 py-3 font-semibold text-slate-600">User</th>
                 <th className="text-left px-5 py-3 font-semibold text-slate-600">Plan</th>
                 <th className="text-left px-5 py-3 font-semibold text-slate-600">Status</th>
+                <th className="text-left px-5 py-3 font-semibold text-slate-600">Sessions</th>
                 <th className="text-left px-5 py-3 font-semibold text-slate-600">Messages</th>
+                <th className="text-left px-5 py-3 font-semibold text-slate-600">Tokens</th>
                 <th className="text-left px-5 py-3 font-semibold text-slate-600">Joined</th>
               </tr>
             </thead>
@@ -140,12 +144,14 @@ export default function AdminUsersPage() {
                     <td className="px-5 py-4"><div className="h-4 bg-slate-100 rounded w-16 animate-pulse"></div></td>
                     <td className="px-5 py-4"><div className="h-4 bg-slate-100 rounded w-16 animate-pulse"></div></td>
                     <td className="px-5 py-4"><div className="h-4 bg-slate-100 rounded w-12 animate-pulse"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 bg-slate-100 rounded w-12 animate-pulse"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 bg-slate-100 rounded w-16 animate-pulse"></div></td>
                     <td className="px-5 py-4"><div className="h-4 bg-slate-100 rounded w-20 animate-pulse"></div></td>
                   </tr>
                 ))
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-slate-500">
+                  <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
                     No users found
                   </td>
                 </tr>
@@ -167,7 +173,9 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-5 py-4">{tierBadge(user.subscription_tier)}</td>
                     <td className="px-5 py-4">{statusBadge(user.subscription_status)}</td>
-                    <td className="px-5 py-4 text-slate-600">{user.message_count}</td>
+                    <td className="px-5 py-4 text-slate-600">{user.session_count.toLocaleString('en-IN')}</td>
+                    <td className="px-5 py-4 text-slate-600">{user.message_count.toLocaleString('en-IN')}</td>
+                    <td className="px-5 py-4 text-slate-600">{user.tokens_used.toLocaleString('en-IN')}</td>
                     <td className="px-5 py-4 text-slate-500 text-xs">
                       {new Date(user.created_at).toLocaleDateString('en-IN')}
                     </td>
