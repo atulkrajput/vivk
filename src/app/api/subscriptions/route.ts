@@ -110,7 +110,22 @@ export async function POST(request: NextRequest) {
     }
 
     const targetPlan = SUBSCRIPTION_PLANS[targetTier as SubscriptionTier]
-    
+
+    // Paid tiers are only granted by /api/payments/verify after a verified Razorpay payment
+    if (action === 'upgrade' && targetPlan.price > 0) {
+      return NextResponse.json(
+        { error: "Payment required to upgrade to a paid plan" },
+        { status: 402 }
+      )
+    }
+
+    if (action === 'downgrade' && TIER_RANK[targetTier as SubscriptionTier] >= TIER_RANK[currentTier]) {
+      return NextResponse.json(
+        { error: "You can only downgrade to a lower plan" },
+        { status: 400 }
+      )
+    }
+
     if (action === 'upgrade') {
       // For upgrades, apply immediately
       const updatedUser = await userDb.update(session.user.id, {
@@ -159,6 +174,14 @@ export async function POST(request: NextRequest) {
           subscription_expires_at: targetTier === 'free' ? undefined : user.subscription_expires_at
         })
 
+        const subscription = await subscriptionDb.getByUserId(session.user.id)
+        if (subscription) {
+          await subscriptionDb.update(subscription.id, {
+            plan_id: targetTier as SubscriptionTier,
+            status: 'active'
+          })
+        }
+
         return NextResponse.json({
           success: true,
           message: `Successfully downgraded to ${targetPlan.name} plan!`,
@@ -205,6 +228,8 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+const TIER_RANK: Record<SubscriptionTier, number> = { free: 0, pro: 1, business: 2 }
 
 // Helper function to calculate next billing date
 function getNextBillingDate(): Date {

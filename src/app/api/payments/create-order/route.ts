@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
         session.user.id,
         plan.price, // Amount in paise
         'INR',
-        receipt
+        receipt,
+        subscriptionTier as SubscriptionTier
       )
     } catch (error: any) {
       if (error?.statusCode === 401) {

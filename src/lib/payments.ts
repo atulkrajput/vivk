@@ -81,7 +81,8 @@ export const paymentService = {
     userId: string,
     amount: number,
     currency: string = 'INR',
-    receipt?: string
+    receipt?: string,
+    subscriptionTier?: SubscriptionTier
   ): Promise<PaymentIntent> {
     if (!Number.isInteger(amount) || amount < MIN_ORDER_AMOUNT_PAISE) {
       throw new Error(`Order amount must be at least ${MIN_ORDER_AMOUNT_PAISE} paise`)
@@ -93,6 +94,11 @@ export const paymentService = {
         amount: amount, // Amount in paise
         currency,
         receipt: receipt || `payment_${userId}_${Date.now()}`,
+        // Stored on Razorpay's side so verification doesn't depend on our payments table
+        notes: {
+          user_id: userId,
+          ...(subscriptionTier ? { subscription_tier: subscriptionTier } : {})
+        }
       })
 
       // Store payment record in database
@@ -161,33 +167,56 @@ export const paymentService = {
         return false
       }
 
-      // The order must belong to this user, still be pending, and have been created for this tier's price.
-      // Without this check a user could pay for a cheaper plan and claim a more expensive one.
+      // The Razorpay order is the source of truth: it must belong to this user and have been
+      // created for this tier's price. Without this a user could pay for Pro and claim Business.
+      const order: any = await getRazorpayInstance().orders.fetch(orderId)
+      const orderAmount = typeof order.amount === 'string' ? parseInt(order.amount) : order.amount
+      // The local record is best-effort; it may be missing if its insert failed at order creation
       const payment = await paymentDb.getByRazorpayId(orderId)
-      if (!payment || payment.user_id !== userId) {
-        console.error('Payment order not found for user')
+      // Orders created before notes were added fall back to the local record's owner
+      const orderUserId = order.notes?.user_id || payment?.user_id
+      if (orderUserId !== userId) {
+        console.error('Payment order does not belong to user')
         return false
       }
-      if (payment.status === 'completed') {
-        console.error('Payment order already completed')
+      if (order.notes?.subscription_tier && order.notes.subscription_tier !== subscriptionTier) {
+        console.error('Payment order was created for a different subscription tier')
         return false
       }
-      if (payment.amount !== SUBSCRIPTION_PLANS[subscriptionTier].price) {
+      if (orderAmount !== SUBSCRIPTION_PLANS[subscriptionTier].price) {
         console.error('Payment amount does not match subscription tier')
         return false
       }
 
-      await paymentDb.updateStatus(payment.id, 'completed')
+      if (payment?.status === 'completed') {
+        console.error('Payment order already completed')
+        return false
+      }
+      if (payment) {
+        await paymentDb.updateStatus(payment.id, 'completed')
+      } else {
+        await paymentDb.create({
+          user_id: userId,
+          razorpay_payment_id: orderId,
+          amount: orderAmount,
+          currency: order.currency || 'INR',
+          status: 'completed'
+        })
+      }
 
       // Upgrade user subscription
       const nextBillingDate = new Date()
       nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
 
-      await userDb.update(userId, {
+      const updatedUser = await userDb.update(userId, {
         subscription_tier: subscriptionTier,
         subscription_status: 'active',
         subscription_expires_at: nextBillingDate
       })
+      if (!updatedUser) {
+        console.error(`Payment ${paymentId} verified but user ${userId} could not be upgraded`)
+        return false
+      }
 
       // Create or update subscription record
       let subscription = await subscriptionDb.getByUserId(userId)

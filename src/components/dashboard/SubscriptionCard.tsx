@@ -20,6 +20,7 @@ interface SubscriptionCardProps {
   onUpgrade?: (targetTier: SubscriptionTier) => void
   onCancel?: () => void
   onPaymentSuccess?: () => void
+  onChangePlan?: () => void
   className?: string
 }
 
@@ -31,6 +32,7 @@ export function SubscriptionCard({
   onUpgrade,
   onCancel,
   onPaymentSuccess,
+  onChangePlan,
   className = ''
 }: SubscriptionCardProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -202,10 +204,10 @@ export function SubscriptionCard({
         </div>
 
         {/* Downgrade Info */}
-        {isPaidTier && (
+        {isPaidTier && onChangePlan && (
           <div className="mt-4 text-center">
-            <button className="text-sm text-gray-500 hover:text-gray-700 underline">
-              Need to downgrade? Contact support
+            <button onClick={onChangePlan} className="text-sm text-gray-500 hover:text-gray-700 underline">
+              Need to downgrade or switch plans?
             </button>
           </div>
         )}

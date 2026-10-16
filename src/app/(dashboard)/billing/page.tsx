@@ -15,6 +15,8 @@ import {
   getSubscriptionPlan 
 } from '@/lib/subscriptions'
 
+const TIER_RANK: Record<SubscriptionTier, number> = { free: 0, pro: 1, business: 2 }
+
 interface SubscriptionData {
   tier: SubscriptionTier
   status: string
@@ -66,12 +68,19 @@ export default function BillingPage() {
     }
   }
 
+  // Paid upgrades go through PaymentModal; this handles moving to a lower (or free) plan
   const handleUpgrade = async (targetTier: SubscriptionTier) => {
+    if (!subscription) return
+    const isDowngrade = TIER_RANK[targetTier] < TIER_RANK[subscription.tier]
+    if (isDowngrade && !confirm(`Switch to the ${getSubscriptionPlan(targetTier).name} plan now? You will lose access to your current plan's features immediately.`)) {
+      return
+    }
+
     try {
       const response = await fetch('/api/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'upgrade', targetTier, immediate: true }),
+        body: JSON.stringify({ action: isDowngrade ? 'downgrade' : 'upgrade', targetTier, immediate: true }),
       })
 
       if (response.ok) {
@@ -194,12 +203,13 @@ export default function BillingPage() {
                 onUpgrade={handleUpgrade}
                 onCancel={handleCancel}
                 onPaymentSuccess={fetchSubscriptionData}
+                onChangePlan={() => setShowPricingPlans(true)}
                 className="mb-6"
               />
             )}
 
-            {/* Upgrade Options */}
-            {subscription?.tier === 'free' && (
+            {/* Plan Options */}
+            {subscription && (
               <div className="vivk-card p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-vivk-blue/[0.08] flex items-center justify-center flex-shrink-0">
@@ -207,10 +217,12 @@ export default function BillingPage() {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base font-semibold text-vivk-navy mb-1">
-                      Unlock Premium Features
+                      {subscription.tier === 'free' ? 'Unlock Premium Features' : 'Change Your Plan'}
                     </h3>
                     <p className="text-sm text-slate-600 mb-4">
-                      Upgrade to Pro or Business for unlimited messages, advanced AI, and more.
+                      {subscription.tier === 'free'
+                        ? 'Upgrade to Pro or Business for unlimited messages, advanced AI, and more.'
+                        : 'Upgrade, switch, or downgrade your VIVK plan.'}
                     </p>
                     <button
                       onClick={() => setShowPricingPlans(!showPricingPlans)}
