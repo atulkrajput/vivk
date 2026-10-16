@@ -15,7 +15,8 @@ import {
   Trash2, 
   LogOut,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  LayoutDashboard
 } from 'lucide-react'
 import type { ConversationWithMessageCount } from '@/types/database.types'
 
@@ -345,16 +346,30 @@ export function ConversationSidebar({
 
       {/* User footer */}
       <div className="border-t border-white/[0.06] p-3">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-vivk-gradient flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-semibold">
-              {userEmail?.charAt(0).toUpperCase() || 'U'}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-slate-300 truncate">{userEmail}</p>
-            <p className="text-[10px] text-slate-500">{tierLabel} Plan</p>
-          </div>
+        <div className="flex items-center gap-1">
+          <Link
+            href="/dashboard"
+            className="flex flex-1 min-w-0 items-center gap-3 -m-1 p-1 rounded-lg hover:bg-white/5 transition-colors"
+            title="Go to dashboard"
+          >
+            <div className="w-8 h-8 rounded-full bg-vivk-gradient flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-semibold">
+                {userEmail?.charAt(0).toUpperCase() || 'U'}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-slate-300 truncate">{userEmail}</p>
+              <p className="text-[10px] text-slate-500">{tierLabel} Plan</p>
+            </div>
+          </Link>
+          <Link
+            href="/dashboard"
+            className="p-1.5 text-slate-600 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-colors"
+            title="Dashboard"
+            aria-label="Dashboard"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+          </Link>
           <button
             onClick={onSignOut}
             className="p-1.5 text-slate-600 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-colors"
