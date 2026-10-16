@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { 
   Plus, 
   Search, 
@@ -13,7 +14,8 @@ import {
   Download, 
   Trash2, 
   LogOut,
-  MessageSquare
+  MessageSquare,
+  Sparkles
 } from 'lucide-react'
 import type { ConversationWithMessageCount } from '@/types/database.types'
 
@@ -118,8 +120,19 @@ export function ConversationSidebar({
     return messageDate.toLocaleDateString()
   }
 
-  const tierLabel = session?.user?.subscriptionTier === 'pro' ? 'Pro' :
-    session?.user?.subscriptionTier === 'business' ? 'Business' : 'Free'
+  // The session's tier is set at login, so fetch the live one to reflect upgrades made since
+  const [liveTier, setLiveTier] = useState<string | null>(null)
+  useEffect(() => {
+    if (!session?.user) return
+    fetch('/api/subscriptions')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data?.subscription?.tier) setLiveTier(data.subscription.tier) })
+      .catch(() => {})
+  }, [session?.user])
+
+  const currentTier = liveTier || session?.user?.subscriptionTier || 'free'
+  const tierLabel = currentTier === 'pro' ? 'Pro' : currentTier === 'business' ? 'Business' : 'Free'
+  const isFreeTier = currentTier === 'free'
 
   if (isCollapsed) {
     return (
@@ -143,6 +156,18 @@ export function ConversationSidebar({
             <Plus className="w-5 h-5" />
           </button>
         </div>
+        {isFreeTier && (
+          <div className="mt-auto px-3 pb-3">
+            <Link
+              href="/billing"
+              className="w-10 h-10 flex items-center justify-center bg-vivk-gradient text-white rounded-xl transition-all hover:opacity-90"
+              aria-label="Upgrade plan"
+              title="Upgrade plan"
+            >
+              <Sparkles className="w-5 h-5" />
+            </Link>
+          </div>
+        )}
       </div>
     )
   }
@@ -339,6 +364,15 @@ export function ConversationSidebar({
             <LogOut className="w-4 h-4" />
           </button>
         </div>
+        {isFreeTier && (
+          <Link
+            href="/billing"
+            className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-vivk-gradient text-white text-xs font-semibold rounded-xl transition-all hover:opacity-90"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Upgrade to Pro or Business
+          </Link>
+        )}
       </div>
 
       {/* Click outside to close context menu */}
