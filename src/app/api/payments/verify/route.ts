@@ -36,6 +36,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Reject before touching any payment or subscription records
+    if (!paymentService.verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)) {
+      return NextResponse.json(
+        { error: "Invalid payment signature" },
+        { status: 400 }
+      )
+    }
+
     // Handle payment success
     const success = await paymentService.handlePaymentSuccess(
       session.user.id,

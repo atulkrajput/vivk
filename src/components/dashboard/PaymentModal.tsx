@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { type SubscriptionPlan, type SubscriptionTier } from '@/lib/subscriptions'
 
@@ -17,14 +17,45 @@ declare global {
   }
 }
 
+const RAZORPAY_CHECKOUT_URL = 'https://checkout.razorpay.com/v1/checkout.js'
+
+// Load Razorpay Standard Checkout once, on first use
+function loadRazorpayScript(): Promise<boolean> {
+  if (typeof window === 'undefined') return Promise.resolve(false)
+  if (window.Razorpay) return Promise.resolve(true)
+
+  return new Promise((resolve) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${RAZORPAY_CHECKOUT_URL}"]`)
+    const script = existing || document.createElement('script')
+    script.addEventListener('load', () => resolve(true))
+    script.addEventListener('error', () => {
+      script.remove()
+      resolve(false)
+    })
+    if (!existing) {
+      script.src = RAZORPAY_CHECKOUT_URL
+      script.async = true
+      document.body.appendChild(script)
+    }
+  })
+}
+
 export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isOpen) loadRazorpayScript()
+  }, [isOpen])
 
   const handlePayment = async () => {
     try {
       setIsProcessing(true)
       setError(null)
+
+      if (!(await loadRazorpayScript())) {
+        throw new Error('Could not load Razorpay. Check your connection and try again.')
+      }
 
       // Create payment order
       const orderResponse = await fetch('/api/payments/create-order', {
@@ -80,6 +111,8 @@ export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalP
           } catch (error) {
             console.error('Payment verification error:', error)
             setError(error instanceof Error ? error.message : 'Payment verification failed')
+          } finally {
+            setIsProcessing(false)
           }
         },
         prefill: {
@@ -96,11 +129,16 @@ export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalP
         modal: {
           ondismiss: function() {
             setIsProcessing(false)
+            setError((prev) => prev || 'Payment cancelled. You have not been charged.')
           }
         }
       }
 
       const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', function (response: any) {
+        console.error('Payment failed:', response.error)
+        setError(response.error?.description || 'Payment failed. Please try again.')
+      })
       rzp.open()
 
     } catch (error) {

@@ -4,6 +4,9 @@ import crypto from 'crypto'
 import { paymentDb, subscriptionDb, userDb } from './db'
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from './subscriptions'
 
+// Razorpay rejects orders below ₹1
+export const MIN_ORDER_AMOUNT_PAISE = 100
+
 // Lazy initialization of Razorpay instance
 let razorpayInstance: Razorpay | null = null
 
@@ -79,7 +82,11 @@ export const paymentService = {
     amount: number,
     currency: string = 'INR',
     receipt?: string
-  ): Promise<PaymentIntent | null> {
+  ): Promise<PaymentIntent> {
+    if (!Number.isInteger(amount) || amount < MIN_ORDER_AMOUNT_PAISE) {
+      throw new Error(`Order amount must be at least ${MIN_ORDER_AMOUNT_PAISE} paise`)
+    }
+
     try {
       const razorpay = getRazorpayInstance()
       const order = await razorpay.orders.create({
@@ -106,25 +113,33 @@ export const paymentService = {
         created_at: order.created_at
       }
     } catch (error) {
+      // Rethrow so the route can tell Razorpay auth failures (statusCode 401) from other errors
       console.error('Error creating payment order:', error)
-      return null
+      throw error
     }
   },
 
-  // Verify payment signature
+  // Verify payment signature: HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)
   verifyPaymentSignature(
     orderId: string,
     paymentId: string,
     signature: string
   ): boolean {
     try {
+      const keySecret = process.env.RAZORPAY_KEY_SECRET
+      if (!keySecret) {
+        throw new Error('Razorpay credentials not configured')
+      }
+
       const body = orderId + '|' + paymentId
       const expectedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
-        .update(body.toString())
+        .createHmac('sha256', keySecret)
+        .update(body)
         .digest('hex')
 
-      return expectedSignature === signature
+      const expected = Buffer.from(expectedSignature, 'utf8')
+      const received = Buffer.from(String(signature), 'utf8')
+      return expected.length === received.length && crypto.timingSafeEqual(expected, received)
     } catch (error) {
       console.error('Error verifying payment signature:', error)
       return false
@@ -146,11 +161,23 @@ export const paymentService = {
         return false
       }
 
-      // Update payment status
+      // The order must belong to this user, still be pending, and have been created for this tier's price.
+      // Without this check a user could pay for a cheaper plan and claim a more expensive one.
       const payment = await paymentDb.getByRazorpayId(orderId)
-      if (payment) {
-        await paymentDb.updateStatus(payment.id, 'completed')
+      if (!payment || payment.user_id !== userId) {
+        console.error('Payment order not found for user')
+        return false
       }
+      if (payment.status === 'completed') {
+        console.error('Payment order already completed')
+        return false
+      }
+      if (payment.amount !== SUBSCRIPTION_PLANS[subscriptionTier].price) {
+        console.error('Payment amount does not match subscription tier')
+        return false
+      }
+
+      await paymentDb.updateStatus(payment.id, 'completed')
 
       // Upgrade user subscription
       const nextBillingDate = new Date()
@@ -464,9 +491,9 @@ export const paymentUtils = {
     return paise / 100
   },
 
-  // Generate receipt ID
+  // Generate receipt ID (Razorpay allows at most 40 characters)
   generateReceiptId(userId: string, planId: string): string {
-    return `vivk_${planId}_${userId}_${Date.now()}`
+    return `vivk_${planId}_${userId.slice(0, 8)}_${Date.now().toString(36)}`.slice(0, 40)
   },
 
   // Get plan amount in paise
