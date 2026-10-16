@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center">
-              <Image src="/vivk_logo.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" priority />
+              <Image src="/vivk_logo.png" alt="VIVK" width={177} height={61} className="h-[61px] w-auto" priority />
             </Link>
             <Link href="/" className="text-sm font-medium text-slate-600 hover:text-vivk-navy transition-colors">
               Back to Home

@@ -39,7 +39,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Image src="/vivk_logo.png" alt="VIVK" width={218} height={75} className="h-[75px] w-auto" priority />
+              <Image src="/vivk_logo.png" alt="VIVK" width={157} height={54} className="h-[54px] w-auto" priority />
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-sm font-medium text-slate-600 hover:text-vivk-navy transition-colors">Features</a>

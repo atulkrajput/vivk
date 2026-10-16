@@ -11,9 +11,9 @@ export function Logo({ className = '' }: LogoProps) {
       <Image
         src="/vivk_logo.png"
         alt="VIVK"
-        width={247}
-        height={85}
-        className="h-[85px] w-auto"
+        width={177}
+        height={61}
+        className="h-[61px] w-auto"
         priority
       />
     </div>

@@ -178,7 +178,7 @@ export function ConversationSidebar({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center">
-          <Image src="/logo_white.png" alt="VIVK" width={247} height={85} className="h-[85px] w-auto" priority />
+          <Image src="/logo_white.png" alt="VIVK" width={177} height={61} className="h-[61px] w-auto" priority />
         </div>
         <button
           onClick={onToggleCollapse}
