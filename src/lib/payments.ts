@@ -3,6 +3,7 @@ import Razorpay from 'razorpay'
 import crypto from 'crypto'
 import { paymentDb, subscriptionDb, userDb } from './db'
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from './subscriptions'
+import type { Payment } from '@/types/database.types'
 
 // Razorpay rejects orders below ₹1
 export const MIN_ORDER_AMOUNT_PAISE = 100
@@ -188,60 +189,74 @@ export const paymentService = {
         return false
       }
 
+      // The webhook may have applied this exact order already; the checks above confirmed it
+      // is this user's order for this tier, so report success rather than an error
       if (payment?.status === 'completed') {
-        console.error('Payment order already completed')
-        return false
-      }
-      if (payment) {
-        await paymentDb.updateStatus(payment.id, 'completed')
-      } else {
-        await paymentDb.create({
-          user_id: userId,
-          razorpay_payment_id: orderId,
-          amount: orderAmount,
-          currency: order.currency || 'INR',
-          status: 'completed'
-        })
+        return true
       }
 
-      // Upgrade user subscription
-      const nextBillingDate = new Date()
-      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
-
-      const updatedUser = await userDb.update(userId, {
-        subscription_tier: subscriptionTier,
-        subscription_status: 'active',
-        subscription_expires_at: nextBillingDate
-      })
-      if (!updatedUser) {
-        console.error(`Payment ${paymentId} verified but user ${userId} could not be upgraded`)
-        return false
-      }
-
-      // Create or update subscription record
-      let subscription = await subscriptionDb.getByUserId(userId)
-      if (subscription) {
-        await subscriptionDb.update(subscription.id, {
-          plan_id: subscriptionTier,
-          status: 'active',
-          current_period_start: new Date(),
-          current_period_end: nextBillingDate
-        })
-      } else {
-        await subscriptionDb.create({
-          user_id: userId,
-          plan_id: subscriptionTier,
-          status: 'active',
-          current_period_start: new Date(),
-          current_period_end: nextBillingDate
-        })
-      }
-
-      return true
+      return await this.applyPlanUpgrade(userId, subscriptionTier, orderId, orderAmount, order.currency || 'INR', payment)
     } catch (error) {
       console.error('Error handling payment success:', error)
       return false
     }
+  },
+
+  // Upgrade the user for a verified, paid order. Shared by the verify route and the webhook.
+  // The payment row is marked completed last, so a failed upgrade can be retried.
+  async applyPlanUpgrade(
+    userId: string,
+    subscriptionTier: SubscriptionTier,
+    orderId: string,
+    orderAmount: number,
+    currency: string,
+    payment: Payment | null
+  ): Promise<boolean> {
+    const nextBillingDate = new Date()
+    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
+
+    const updatedUser = await userDb.update(userId, {
+      subscription_tier: subscriptionTier,
+      subscription_status: 'active',
+      subscription_expires_at: nextBillingDate
+    })
+    if (!updatedUser) {
+      console.error(`Order ${orderId} is paid but user ${userId} could not be upgraded`)
+      return false
+    }
+
+    // Create or update subscription record
+    const subscription = await subscriptionDb.getByUserId(userId)
+    if (subscription) {
+      await subscriptionDb.update(subscription.id, {
+        plan_id: subscriptionTier,
+        status: 'active',
+        current_period_start: new Date(),
+        current_period_end: nextBillingDate
+      })
+    } else {
+      await subscriptionDb.create({
+        user_id: userId,
+        plan_id: subscriptionTier,
+        status: 'active',
+        current_period_start: new Date(),
+        current_period_end: nextBillingDate
+      })
+    }
+
+    if (payment) {
+      await paymentDb.updateStatus(payment.id, 'completed')
+    } else {
+      await paymentDb.create({
+        user_id: userId,
+        razorpay_payment_id: orderId,
+        amount: orderAmount,
+        currency,
+        status: 'completed'
+      })
+    }
+
+    return true
   },
 
   // Handle payment failure
@@ -454,11 +469,42 @@ export const webhookService = {
         .update(payload)
         .digest('hex')
 
-      return expectedSignature === signature
+      const expected = Buffer.from(expectedSignature, 'utf8')
+      const received = Buffer.from(String(signature), 'utf8')
+      return expected.length === received.length && crypto.timingSafeEqual(expected, received)
     } catch (error) {
       console.error('Error verifying webhook signature:', error)
       return false
     }
+  },
+
+  // Upgrade the user who paid for this order, in case the browser never reached /verify.
+  // Unusable orders return true so Razorpay doesn't keep retrying them.
+  async handlePaymentCaptured(orderId: string): Promise<boolean> {
+    const payment = await paymentDb.getByRazorpayId(orderId)
+    if (payment?.status === 'completed') {
+      // Verify (or an earlier delivery) already applied it
+      return true
+    }
+
+    const order: any = await getRazorpayInstance().orders.fetch(orderId)
+    const orderAmount = typeof order.amount === 'string' ? parseInt(order.amount) : order.amount
+    const userId = order.notes?.user_id
+    const tier = order.notes?.subscription_tier as SubscriptionTier | undefined
+    if (!userId || !tier || tier === 'free' || !SUBSCRIPTION_PLANS[tier]) {
+      console.error(`Captured order ${orderId} has no user or paid tier in its notes; not upgrading`)
+      return true
+    }
+    if (orderAmount !== SUBSCRIPTION_PLANS[tier].price) {
+      console.error(`Captured order ${orderId} amount does not match the ${tier} price; not upgrading`)
+      return true
+    }
+    if (payment && payment.user_id !== userId) {
+      console.error(`Captured order ${orderId} notes and payment record disagree on the user; not upgrading`)
+      return true
+    }
+
+    return await paymentService.applyPlanUpgrade(userId, tier, orderId, orderAmount, order.currency || 'INR', payment)
   },
 
   // Process webhook payload
@@ -467,18 +513,25 @@ export const webhookService = {
       const { event, payload: webhookPayload } = payload
 
       switch (event) {
-        case 'payment.captured':
-        case 'payment.failed':
-          // Handle payment events
+        case 'payment.captured': {
+          const payment = webhookPayload.payment?.entity
+          if (payment?.order_id) {
+            // Returning false makes the route answer 500, so Razorpay retries the delivery
+            return await this.handlePaymentCaptured(payment.order_id)
+          }
+          break
+        }
+
+        case 'payment.failed': {
           const payment = webhookPayload.payment?.entity
           if (payment) {
-            const status = event === 'payment.captured' ? 'completed' : 'failed'
             const dbPayment = await paymentDb.getByRazorpayId(payment.order_id)
             if (dbPayment) {
-              await paymentDb.updateStatus(dbPayment.id, status)
+              await paymentDb.updateStatus(dbPayment.id, 'failed')
             }
           }
           break
+        }
 
         case 'subscription.activated':
         case 'subscription.charged':
