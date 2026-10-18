@@ -40,11 +40,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Re-check the discount here; the amount the user pays is only ever computed server-side
-    let discount: AppliedDiscount | null = null
+    // Re-check the discount and hold a use for this checkout; the amount the user pays is only
+    // ever computed server-side
+    let discount: (AppliedDiscount & { reservationId: string }) | null = null
     if (discountCode) {
       try {
-        discount = await discountService.apply(String(discountCode), session.user.id, subscriptionTier as SubscriptionTier)
+        discount = await discountService.reserve(String(discountCode), session.user.id, subscriptionTier as SubscriptionTier)
       } catch (error) {
         if (error instanceof DiscountError) {
           return NextResponse.json({ error: error.message }, { status: 400 })
@@ -69,6 +70,9 @@ export async function POST(request: NextRequest) {
           : undefined
       )
     } catch (error: any) {
+      if (discount) {
+        await discountService.release(discount.reservationId).catch((e) => console.error('Could not release discount reservation:', e))
+      }
       if (error?.statusCode === 401) {
         return NextResponse.json(
           { error: "Payment gateway authentication failed" },
@@ -79,6 +83,12 @@ export async function POST(request: NextRequest) {
         { error: error?.error?.description || "Failed to create payment order" },
         { status: 500 }
       )
+    }
+
+    if (discount) {
+      // Lets verify/webhook confirm this reservation; if it fails they record the use themselves
+      await discountService.attachOrder(discount.reservationId, paymentOrder.id)
+        .catch((e) => console.error('Could not link discount reservation to order:', e))
     }
 
     return NextResponse.json({

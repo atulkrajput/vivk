@@ -228,6 +228,20 @@ export const paymentService = {
     payment: Payment | null,
     orderNotes?: Record<string, any>
   ): Promise<boolean> {
+    // Count the discount use first. It is idempotent per order, and a failure throws before
+    // anything is applied, so verify reports failure and the webhook delivery is retried.
+    if (orderNotes?.discount_code) {
+      await discountService.recordRedemption({
+        code: orderNotes.discount_code,
+        userId,
+        orderId,
+        tier: subscriptionTier,
+        originalAmount: Number(orderNotes.original_amount),
+        discountAmount: Number(orderNotes.discount_amount),
+        finalAmount: orderAmount
+      })
+    }
+
     const nextBillingDate = new Date()
     nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
 
@@ -258,23 +272,6 @@ export const paymentService = {
         current_period_start: new Date(),
         current_period_end: nextBillingDate
       })
-    }
-
-    // Count the discount code use; a failure here must not undo an upgrade the user paid for
-    if (orderNotes?.discount_code) {
-      try {
-        await discountService.recordRedemption({
-          code: orderNotes.discount_code,
-          userId,
-          orderId,
-          tier: subscriptionTier,
-          originalAmount: Number(orderNotes.original_amount),
-          discountAmount: Number(orderNotes.discount_amount),
-          finalAmount: orderAmount
-        })
-      } catch (error) {
-        console.error(`Could not record discount ${orderNotes.discount_code} for order ${orderId}:`, error)
-      }
     }
 
     if (payment) {

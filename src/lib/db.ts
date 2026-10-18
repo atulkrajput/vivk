@@ -58,6 +58,28 @@ export async function rawQuery<T = any>(sql: string, params?: any[]): Promise<T[
   return query<T>(sql, params)
 }
 
+export type TxQuery = <T = any>(sql: string, params?: any[]) => Promise<T[]>
+
+// Run fn inside one transaction on a single connection; rolls back if fn throws
+export async function withTransaction<R>(fn: (q: TxQuery) => Promise<R>): Promise<R> {
+  const conn = await getPool().getConnection()
+  try {
+    await conn.beginTransaction()
+    const q: TxQuery = async (sql, params) => {
+      const [rows] = await conn.execute(sql, params)
+      return rows as any
+    }
+    const result = await fn(q)
+    await conn.commit()
+    return result
+  } catch (error) {
+    await conn.rollback().catch(() => {})
+    throw error
+  } finally {
+    conn.release()
+  }
+}
+
 async function queryOne<T>(sql: string, params?: any[]): Promise<T | null> {
   const rows = await query<T>(sql, params)
   return rows[0] || null

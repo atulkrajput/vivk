@@ -1,6 +1,6 @@
 // Discount codes: admin-created coupons (flat ₹ or %) with a validity window and a use limit
 import crypto from 'crypto'
-import { rawQuery } from './db'
+import { rawQuery, withTransaction, type TxQuery } from './db'
 import { MIN_ORDER_AMOUNT_PAISE } from './payments'
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from './subscriptions'
 
@@ -29,6 +29,9 @@ export interface AppliedDiscount {
   discountAmount: number // paise
   finalAmount: number // paise
 }
+
+// How long an unpaid checkout holds a use of a limited code
+export const RESERVATION_MINUTES = 30
 
 // Tables are created on first use so the live database needs no manual migration
 // (same DDL as sql/004_discount_codes.sql)
@@ -61,7 +64,9 @@ export function ensureDiscountTables(): Promise<void> {
           id CHAR(36) NOT NULL PRIMARY KEY,
           discount_code_id CHAR(36) NOT NULL,
           user_id CHAR(36) NOT NULL,
-          order_id VARCHAR(255) NOT NULL,
+          order_id VARCHAR(255) NULL,
+          status ENUM('pending', 'completed') NOT NULL DEFAULT 'pending',
+          expires_at DATETIME NULL COMMENT 'When a pending reservation stops holding a use',
           subscription_tier VARCHAR(20) NOT NULL,
           original_amount INT NOT NULL,
           discount_amount INT NOT NULL,
@@ -72,6 +77,19 @@ export function ensureDiscountTables(): Promise<void> {
           FOREIGN KEY (discount_code_id) REFERENCES discount_codes(id) ON DELETE CASCADE
         ) ENGINE=InnoDB
       `)
+      // Tables created before reservations existed hold only paid redemptions
+      const columns = await rawQuery<{ name: string }>(
+        `SELECT COLUMN_NAME as name FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'discount_redemptions'`
+      )
+      if (!columns.some((c) => c.name === 'status')) {
+        await rawQuery(`
+          ALTER TABLE discount_redemptions
+            MODIFY order_id VARCHAR(255) NULL,
+            ADD COLUMN status ENUM('pending', 'completed') NOT NULL DEFAULT 'completed' AFTER order_id,
+            ADD COLUMN expires_at DATETIME NULL AFTER status
+        `)
+      }
     })().catch((error) => {
       tablesReady = null
       throw error
@@ -102,6 +120,51 @@ export function computeDiscountAmount(code: Pick<DiscountCode, 'discount_type' |
 
 export class DiscountError extends Error {}
 
+// A use counts once paid, or while its checkout reservation is still live
+const HOLDS_USE = "(status = 'completed' OR expires_at > NOW())"
+
+async function checkCode(q: TxQuery, code: DiscountCode | null, userId: string, tier: SubscriptionTier): Promise<AppliedDiscount> {
+  const plan = SUBSCRIPTION_PLANS[tier]
+  if (!code || !code.is_active) {
+    throw new DiscountError('Invalid discount code')
+  }
+
+  const now = Date.now()
+  if (code.valid_from && new Date(code.valid_from).getTime() > now) {
+    throw new DiscountError('This discount code is not active yet')
+  }
+  if (code.valid_until && new Date(code.valid_until).getTime() < now) {
+    throw new DiscountError('This discount code has expired')
+  }
+  if (code.applicable_tier !== 'all' && code.applicable_tier !== tier) {
+    throw new DiscountError(`This discount code is only valid for the ${SUBSCRIPTION_PLANS[code.applicable_tier].name} plan`)
+  }
+
+  const [uses] = await q<{ total: number; mine: number }>(
+    `SELECT COUNT(*) as total, COALESCE(SUM(user_id = ?), 0) as mine
+     FROM discount_redemptions WHERE discount_code_id = ? AND ${HOLDS_USE}`,
+    [userId, code.id]
+  )
+  if (code.max_uses !== null && Number(uses?.total || 0) >= code.max_uses) {
+    throw new DiscountError('This discount code has reached its usage limit')
+  }
+  if (Number(uses?.mine || 0) >= code.max_uses_per_user) {
+    throw new DiscountError('You have already used this discount code')
+  }
+
+  const discountAmount = computeDiscountAmount(code, plan.price)
+  if (discountAmount <= 0) {
+    throw new DiscountError('This discount code does not reduce the price of this plan')
+  }
+
+  return {
+    code,
+    originalAmount: plan.price,
+    discountAmount,
+    finalAmount: plan.price - discountAmount,
+  }
+}
+
 export const discountService = {
   async getByCode(code: string): Promise<DiscountCode | null> {
     await ensureDiscountTables()
@@ -109,50 +172,41 @@ export const discountService = {
     return rows[0] || null
   },
 
-  // Check a code for this user and plan; throws DiscountError with a user-facing message
+  // Preview a code for this user and plan; throws DiscountError with a user-facing message
   async apply(rawCode: string, userId: string, tier: SubscriptionTier): Promise<AppliedDiscount> {
-    const plan = SUBSCRIPTION_PLANS[tier]
-    const code = await this.getByCode(rawCode)
-    if (!code || !code.is_active) {
-      throw new DiscountError('Invalid discount code')
-    }
-
-    const now = Date.now()
-    if (code.valid_from && new Date(code.valid_from).getTime() > now) {
-      throw new DiscountError('This discount code is not active yet')
-    }
-    if (code.valid_until && new Date(code.valid_until).getTime() < now) {
-      throw new DiscountError('This discount code has expired')
-    }
-    if (code.applicable_tier !== 'all' && code.applicable_tier !== tier) {
-      throw new DiscountError(`This discount code is only valid for the ${SUBSCRIPTION_PLANS[code.applicable_tier].name} plan`)
-    }
-    if (code.max_uses !== null && code.used_count >= code.max_uses) {
-      throw new DiscountError('This discount code has reached its usage limit')
-    }
-
-    const userRows = await rawQuery<{ uses: number }>(
-      'SELECT COUNT(*) as uses FROM discount_redemptions WHERE discount_code_id = ? AND user_id = ?',
-      [code.id, userId]
-    )
-    if (Number(userRows[0]?.uses || 0) >= code.max_uses_per_user) {
-      throw new DiscountError('You have already used this discount code')
-    }
-
-    const discountAmount = computeDiscountAmount(code, plan.price)
-    if (discountAmount <= 0) {
-      throw new DiscountError('This discount code does not reduce the price of this plan')
-    }
-
-    return {
-      code,
-      originalAmount: plan.price,
-      discountAmount,
-      finalAmount: plan.price - discountAmount,
-    }
+    return checkCode(rawQuery, await this.getByCode(rawCode), userId, tier)
   },
 
-  // Record a paid order's discount once; the unique order_id makes verify + webhook safe to both call this
+  // Check a code and hold one use for this checkout. The code row is locked, so concurrent
+  // checkouts cannot both take the last use, or the same user's last use.
+  async reserve(rawCode: string, userId: string, tier: SubscriptionTier): Promise<AppliedDiscount & { reservationId: string }> {
+    await ensureDiscountTables()
+    return withTransaction(async (q) => {
+      const [code] = await q<DiscountCode>('SELECT * FROM discount_codes WHERE code = ? FOR UPDATE', [normalizeCode(rawCode)])
+      const applied = await checkCode(q, code || null, userId, tier)
+      const reservationId = crypto.randomUUID()
+      await q(
+        `INSERT INTO discount_redemptions
+           (id, discount_code_id, user_id, status, expires_at, subscription_tier, original_amount, discount_amount, final_amount)
+         VALUES (?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ${RESERVATION_MINUTES} MINUTE), ?, ?, ?, ?)`,
+        [reservationId, applied.code.id, userId, tier, applied.originalAmount, applied.discountAmount, applied.finalAmount]
+      )
+      return { ...applied, reservationId }
+    })
+  },
+
+  async attachOrder(reservationId: string, orderId: string): Promise<void> {
+    await rawQuery('UPDATE discount_redemptions SET order_id = ? WHERE id = ?', [orderId, reservationId])
+  },
+
+  // Give the use back when no order could be created for the reservation
+  async release(reservationId: string): Promise<void> {
+    await rawQuery("DELETE FROM discount_redemptions WHERE id = ? AND status = 'pending'", [reservationId])
+  },
+
+  // Turn a paid order's reservation into a redemption. Safe to repeat (verify + webhook).
+  // A payment arriving after its reservation lapsed is still honoured: the user has paid.
+  // Throws on database errors so the caller does not mark the payment completed.
   async recordRedemption(params: {
     code: string
     userId: string
@@ -162,20 +216,33 @@ export const discountService = {
     discountAmount: number
     finalAmount: number
   }): Promise<void> {
-    const code = await this.getByCode(params.code)
-    if (!code) {
-      console.error(`Discount code ${params.code} on order ${params.orderId} no longer exists; not recording`)
-      return
-    }
-    const result: any = await rawQuery(
-      `INSERT IGNORE INTO discount_redemptions
-         (id, discount_code_id, user_id, order_id, subscription_tier, original_amount, discount_amount, final_amount)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [crypto.randomUUID(), code.id, params.userId, params.orderId, params.tier,
-        params.originalAmount, params.discountAmount, params.finalAmount]
-    )
-    if (result?.affectedRows) {
-      await rawQuery('UPDATE discount_codes SET used_count = used_count + 1 WHERE id = ?', [code.id])
-    }
+    await ensureDiscountTables()
+    await withTransaction(async (q) => {
+      const [code] = await q<DiscountCode>('SELECT * FROM discount_codes WHERE code = ? FOR UPDATE', [normalizeCode(params.code)])
+      if (!code) {
+        console.error(`Discount code ${params.code} on order ${params.orderId} no longer exists; not recording`)
+        return
+      }
+
+      const confirmed: any = await q(
+        `UPDATE discount_redemptions SET status = 'completed', expires_at = NULL, final_amount = ?
+         WHERE order_id = ? AND status = 'pending'`,
+        [params.finalAmount, params.orderId]
+      )
+      let counted = Boolean(confirmed?.affectedRows)
+      if (!counted) {
+        const inserted: any = await q(
+          `INSERT IGNORE INTO discount_redemptions
+             (id, discount_code_id, user_id, order_id, status, subscription_tier, original_amount, discount_amount, final_amount)
+           VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`,
+          [crypto.randomUUID(), code.id, params.userId, params.orderId, params.tier,
+            params.originalAmount, params.discountAmount, params.finalAmount]
+        )
+        counted = Boolean(inserted?.affectedRows)
+      }
+      if (counted) {
+        await q('UPDATE discount_codes SET used_count = used_count + 1 WHERE id = ?', [code.id])
+      }
+    })
   },
 }

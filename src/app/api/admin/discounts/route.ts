@@ -27,7 +27,7 @@ export async function GET() {
     const codes = await rawQuery(`
       SELECT d.*, COALESCE(SUM(r.discount_amount), 0) as total_discount, COALESCE(SUM(r.final_amount), 0) as total_revenue
       FROM discount_codes d
-      LEFT JOIN discount_redemptions r ON r.discount_code_id = d.id
+      LEFT JOIN discount_redemptions r ON r.discount_code_id = d.id AND r.status = 'completed'
       GROUP BY d.id
       ORDER BY d.created_at DESC
     `)
@@ -37,6 +37,7 @@ export async function GET() {
       FROM discount_redemptions r
       JOIN discount_codes d ON d.id = r.discount_code_id
       LEFT JOIN users u ON u.id = r.user_id
+      WHERE r.status = 'completed'
       ORDER BY r.created_at DESC
       LIMIT 50
     `)
@@ -163,7 +164,8 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 })
     }
-    const used = await rawQuery('SELECT COUNT(*) as n FROM discount_redemptions WHERE discount_code_id = ?', [id])
+    // Unpaid checkout reservations don't count; they are removed with the code
+    const used = await rawQuery("SELECT COUNT(*) as n FROM discount_redemptions WHERE discount_code_id = ? AND status = 'completed'", [id])
     if (Number(used[0]?.n || 0) > 0) {
       return NextResponse.json({ error: 'This code has been used; disable it instead so its history is kept' }, { status: 409 })
     }
