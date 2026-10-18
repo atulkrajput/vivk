@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS discount_redemptions (
   discount_code_id CHAR(36) NOT NULL,
   user_id CHAR(36) NOT NULL,
   order_id VARCHAR(255) NULL,
-  status ENUM('pending', 'completed') NOT NULL DEFAULT 'pending',
+  status ENUM('pending', 'completed', 'rejected') NOT NULL DEFAULT 'pending',
   expires_at DATETIME NULL COMMENT 'When a pending reservation stops holding a use',
   subscription_tier VARCHAR(20) NOT NULL,
   original_amount INT NOT NULL,

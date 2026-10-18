@@ -68,7 +68,7 @@ export function ensureDiscountTables(): Promise<void> {
           discount_code_id CHAR(36) NOT NULL,
           user_id CHAR(36) NOT NULL,
           order_id VARCHAR(255) NULL,
-          status ENUM('pending', 'completed') NOT NULL DEFAULT 'pending',
+          status ENUM('pending', 'completed', 'rejected') NOT NULL DEFAULT 'pending',
           expires_at DATETIME NULL COMMENT 'When a pending reservation stops holding a use',
           subscription_tier VARCHAR(20) NOT NULL,
           original_amount INT NOT NULL,
@@ -80,18 +80,24 @@ export function ensureDiscountTables(): Promise<void> {
           FOREIGN KEY (discount_code_id) REFERENCES discount_codes(id) ON DELETE CASCADE
         ) ENGINE=InnoDB
       `)
-      // Tables created before reservations existed hold only paid redemptions
-      const columns = await rawQuery<{ name: string }>(
-        `SELECT COLUMN_NAME as name FROM INFORMATION_SCHEMA.COLUMNS
+      // Bring tables from earlier versions of this feature up to date
+      const columns = await rawQuery<{ name: string; type: string }>(
+        `SELECT COLUMN_NAME as name, COLUMN_TYPE as type FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'discount_redemptions'`
       )
-      if (!columns.some((c) => c.name === 'status')) {
+      const status = columns.find((c) => c.name === 'status')
+      if (!status) {
+        // Created before reservations existed: every row is a paid redemption
         await rawQuery(`
           ALTER TABLE discount_redemptions
             MODIFY order_id VARCHAR(255) NULL,
-            ADD COLUMN status ENUM('pending', 'completed') NOT NULL DEFAULT 'completed' AFTER order_id,
+            ADD COLUMN status ENUM('pending', 'completed', 'rejected') NOT NULL DEFAULT 'completed' AFTER order_id,
             ADD COLUMN expires_at DATETIME NULL AFTER status
         `)
+      } else if (!String(status.type).includes('rejected')) {
+        await rawQuery(
+          "ALTER TABLE discount_redemptions MODIFY status ENUM('pending', 'completed', 'rejected') NOT NULL DEFAULT 'pending'"
+        )
       }
     })().catch((error) => {
       tablesReady = null
@@ -210,6 +216,8 @@ export const discountService = {
   // Turn a paid order's reservation into a redemption. Safe to repeat (verify + webhook).
   // Returns false when the order's reservation lapsed and its use has since gone to other
   // checkouts: honouring it would exceed a limit, so the caller refunds the payment instead.
+  // That decision is stored as a 'rejected' row before the refund is attempted, so a retry
+  // after a failed refund or status write continues the refund instead of re-checking room.
   // Throws on database errors so the caller does not mark the payment completed.
   async recordRedemption(params: {
     code: string
@@ -236,6 +244,9 @@ export const discountService = {
       if (existing?.status === 'completed') {
         return true
       }
+      if (existing?.status === 'rejected') {
+        return false
+      }
 
       // A live reservation already holds this use. Otherwise (lapsed, or never linked to the
       // order) the use is only free if every other holder still leaves room for it.
@@ -248,8 +259,17 @@ export const discountService = {
         const overTotal = code.max_uses !== null && Number(uses?.total || 0) >= code.max_uses
         const overUser = Number(uses?.mine || 0) >= code.max_uses_per_user
         if (overTotal || overUser) {
+          // A rejected row holds no use (it never matches HOLDS_USE)
           if (existing) {
-            await q('DELETE FROM discount_redemptions WHERE id = ?', [existing.id])
+            await q("UPDATE discount_redemptions SET status = 'rejected', expires_at = NULL WHERE id = ?", [existing.id])
+          } else {
+            await q(
+              `INSERT INTO discount_redemptions
+                 (id, discount_code_id, user_id, order_id, status, subscription_tier, original_amount, discount_amount, final_amount)
+               VALUES (?, ?, ?, ?, 'rejected', ?, ?, ?, ?)`,
+              [crypto.randomUUID(), code.id, params.userId, params.orderId, params.tier,
+                params.originalAmount, params.discountAmount, params.finalAmount]
+            )
           }
           return false
         }
