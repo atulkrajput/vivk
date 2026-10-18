@@ -16,6 +16,7 @@ import {
   BarChart3,
   Shield,
   Receipt,
+  TicketPercent,
 } from 'lucide-react'
 
 interface AdminSidebarProps {
@@ -27,6 +28,7 @@ const navItems = [
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { href: '/admin/payments', label: 'Transactions', icon: Receipt },
+  { href: '/admin/discounts', label: 'Discount Codes', icon: TicketPercent },
   { href: '/admin/tracking', label: 'Tracking Codes', icon: Code2 },
   { href: '/admin/plans', label: 'Plan Management', icon: BarChart3 },
   { href: '/admin/ai-keys', label: 'AI Keys', icon: Key },
