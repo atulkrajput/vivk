@@ -32,6 +32,9 @@ export interface AppliedDiscount {
 
 // How long an unpaid checkout holds a use of a limited code
 export const RESERVATION_MINUTES = 30
+// Razorpay Checkout closes this long before the reservation lapses, so a normal checkout
+// is always paid inside its reservation
+export const CHECKOUT_TIMEOUT_SECONDS = (RESERVATION_MINUTES - 5) * 60
 
 // Tables are created on first use so the live database needs no manual migration
 // (same DDL as sql/004_discount_codes.sql)
@@ -205,7 +208,8 @@ export const discountService = {
   },
 
   // Turn a paid order's reservation into a redemption. Safe to repeat (verify + webhook).
-  // A payment arriving after its reservation lapsed is still honoured: the user has paid.
+  // Returns false when the order's reservation lapsed and its use has since gone to other
+  // checkouts: honouring it would exceed a limit, so the caller refunds the payment instead.
   // Throws on database errors so the caller does not mark the payment completed.
   async recordRedemption(params: {
     code: string
@@ -215,34 +219,58 @@ export const discountService = {
     originalAmount: number
     discountAmount: number
     finalAmount: number
-  }): Promise<void> {
+  }): Promise<boolean> {
     await ensureDiscountTables()
-    await withTransaction(async (q) => {
+    return withTransaction(async (q) => {
       const [code] = await q<DiscountCode>('SELECT * FROM discount_codes WHERE code = ? FOR UPDATE', [normalizeCode(params.code)])
       if (!code) {
+        // Only never-redeemed codes can be deleted, so there is no limit left to protect
         console.error(`Discount code ${params.code} on order ${params.orderId} no longer exists; not recording`)
-        return
+        return true
       }
 
-      const confirmed: any = await q(
-        `UPDATE discount_redemptions SET status = 'completed', expires_at = NULL, final_amount = ?
-         WHERE order_id = ? AND status = 'pending'`,
-        [params.finalAmount, params.orderId]
+      const [existing] = await q<{ id: string; status: string; live: number }>(
+        'SELECT id, status, (expires_at > NOW()) as live FROM discount_redemptions WHERE order_id = ?',
+        [params.orderId]
       )
-      let counted = Boolean(confirmed?.affectedRows)
-      if (!counted) {
-        const inserted: any = await q(
-          `INSERT IGNORE INTO discount_redemptions
+      if (existing?.status === 'completed') {
+        return true
+      }
+
+      // A live reservation already holds this use. Otherwise (lapsed, or never linked to the
+      // order) the use is only free if every other holder still leaves room for it.
+      if (!(existing && Number(existing.live))) {
+        const [uses] = await q<{ total: number; mine: number }>(
+          `SELECT COUNT(*) as total, COALESCE(SUM(user_id = ?), 0) as mine
+           FROM discount_redemptions WHERE discount_code_id = ? AND id <> ? AND ${HOLDS_USE}`,
+          [params.userId, code.id, existing?.id || '']
+        )
+        const overTotal = code.max_uses !== null && Number(uses?.total || 0) >= code.max_uses
+        const overUser = Number(uses?.mine || 0) >= code.max_uses_per_user
+        if (overTotal || overUser) {
+          if (existing) {
+            await q('DELETE FROM discount_redemptions WHERE id = ?', [existing.id])
+          }
+          return false
+        }
+      }
+
+      if (existing) {
+        await q(
+          `UPDATE discount_redemptions SET status = 'completed', expires_at = NULL, final_amount = ? WHERE id = ?`,
+          [params.finalAmount, existing.id]
+        )
+      } else {
+        await q(
+          `INSERT INTO discount_redemptions
              (id, discount_code_id, user_id, order_id, status, subscription_tier, original_amount, discount_amount, final_amount)
            VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`,
           [crypto.randomUUID(), code.id, params.userId, params.orderId, params.tier,
             params.originalAmount, params.discountAmount, params.finalAmount]
         )
-        counted = Boolean(inserted?.affectedRows)
       }
-      if (counted) {
-        await q('UPDATE discount_codes SET used_count = used_count + 1 WHERE id = ?', [code.id])
-      }
+      await q('UPDATE discount_codes SET used_count = used_count + 1 WHERE id = ?', [code.id])
+      return true
     })
   },
 }

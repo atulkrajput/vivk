@@ -147,6 +147,7 @@ export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalP
         name: 'VIVK',
         description: `${plan.name} Plan Subscription`,
         order_id: orderData.order.id,
+        ...(orderData.checkoutTimeoutSeconds ? { timeout: orderData.checkoutTimeoutSeconds } : {}),
         handler: async function (response: any) {
           try {
             // Verify payment

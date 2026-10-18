@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { paymentService, paymentUtils, MIN_ORDER_AMOUNT_PAISE } from "@/lib/payments"
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from "@/lib/subscriptions"
-import { discountService, DiscountError, type AppliedDiscount } from "@/lib/discounts"
+import { discountService, DiscountError, CHECKOUT_TIMEOUT_SECONDS, type AppliedDiscount } from "@/lib/discounts"
 
 // POST /api/payments/create-order - Create Razorpay payment order
 export async function POST(request: NextRequest) {
@@ -113,6 +113,8 @@ export async function POST(request: NextRequest) {
             finalAmount: discount.finalAmount
           }
         : null,
+      // The discount's use is reserved only for a limited time
+      checkoutTimeoutSeconds: discount ? CHECKOUT_TIMEOUT_SECONDS : null,
       razorpayKeyId: process.env.RAZORPAY_KEY_ID
     })
 
