@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { paymentService, paymentUtils, MIN_ORDER_AMOUNT_PAISE } from "@/lib/payments"
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from "@/lib/subscriptions"
+import { discountService, DiscountError, type AppliedDiscount } from "@/lib/discounts"
 
 // POST /api/payments/create-order - Create Razorpay payment order
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { subscriptionTier } = body
+    const { subscriptionTier, discountCode } = body
 
     if (!subscriptionTier || !['pro', 'business'].includes(subscriptionTier)) {
       return NextResponse.json(
@@ -39,16 +40,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Re-check the discount here; the amount the user pays is only ever computed server-side
+    let discount: AppliedDiscount | null = null
+    if (discountCode) {
+      try {
+        discount = await discountService.apply(String(discountCode), session.user.id, subscriptionTier as SubscriptionTier)
+      } catch (error) {
+        if (error instanceof DiscountError) {
+          return NextResponse.json({ error: error.message }, { status: 400 })
+        }
+        throw error
+      }
+    }
+    const amount = discount ? discount.finalAmount : plan.price
+
     // Create payment order
     const receipt = paymentUtils.generateReceiptId(session.user.id, subscriptionTier)
     let paymentOrder
     try {
       paymentOrder = await paymentService.createPaymentOrder(
         session.user.id,
-        plan.price, // Amount in paise
+        amount, // Amount in paise
         'INR',
         receipt,
-        subscriptionTier as SubscriptionTier
+        subscriptionTier as SubscriptionTier,
+        discount
+          ? { discount_code: discount.code.code, discount_amount: String(discount.discountAmount), original_amount: String(discount.originalAmount) }
+          : undefined
       )
     } catch (error: any) {
       if (error?.statusCode === 401) {
@@ -77,6 +95,14 @@ export async function POST(request: NextRequest) {
         price: plan.price,
         priceDisplay: plan.priceDisplay
       },
+      discount: discount
+        ? {
+            code: discount.code.code,
+            originalAmount: discount.originalAmount,
+            discountAmount: discount.discountAmount,
+            finalAmount: discount.finalAmount
+          }
+        : null,
       razorpayKeyId: process.env.RAZORPAY_KEY_ID
     })
 

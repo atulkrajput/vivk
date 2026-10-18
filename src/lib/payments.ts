@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { paymentDb, subscriptionDb, userDb } from './db'
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from './subscriptions'
 import type { Payment } from '@/types/database.types'
+import { discountService } from './discounts'
 
 // Razorpay rejects orders below ₹1
 export const MIN_ORDER_AMOUNT_PAISE = 100
@@ -75,6 +76,18 @@ export interface RazorpayWebhookPayload {
   created_at: number
 }
 
+// What a Razorpay order for this tier must cost. Order notes are written only by our server
+// (create-order), so a discount recorded there is trusted; the discounted price must still
+// start from the current plan price.
+function expectedOrderAmount(order: any, tier: SubscriptionTier): number {
+  const price = SUBSCRIPTION_PLANS[tier].price
+  const notes = order.notes || {}
+  if (!notes.discount_code) return price
+  if (Number(notes.original_amount) !== price) return NaN
+  const discount = Number(notes.discount_amount)
+  return Number.isInteger(discount) && discount > 0 ? price - discount : NaN
+}
+
 // Payment operations
 export const paymentService = {
   // Create payment order for one-time payment
@@ -83,7 +96,8 @@ export const paymentService = {
     amount: number,
     currency: string = 'INR',
     receipt?: string,
-    subscriptionTier?: SubscriptionTier
+    subscriptionTier?: SubscriptionTier,
+    extraNotes?: Record<string, string>
   ): Promise<PaymentIntent> {
     if (!Number.isInteger(amount) || amount < MIN_ORDER_AMOUNT_PAISE) {
       throw new Error(`Order amount must be at least ${MIN_ORDER_AMOUNT_PAISE} paise`)
@@ -98,7 +112,8 @@ export const paymentService = {
         // Stored on Razorpay's side so verification doesn't depend on our payments table
         notes: {
           user_id: userId,
-          ...(subscriptionTier ? { subscription_tier: subscriptionTier } : {})
+          ...(subscriptionTier ? { subscription_tier: subscriptionTier } : {}),
+          ...(extraNotes || {})
         }
       })
 
@@ -184,7 +199,7 @@ export const paymentService = {
         console.error('Payment order was created for a different subscription tier')
         return false
       }
-      if (orderAmount !== SUBSCRIPTION_PLANS[subscriptionTier].price) {
+      if (orderAmount !== expectedOrderAmount(order, subscriptionTier)) {
         console.error('Payment amount does not match subscription tier')
         return false
       }
@@ -195,7 +210,7 @@ export const paymentService = {
         return true
       }
 
-      return await this.applyPlanUpgrade(userId, subscriptionTier, orderId, orderAmount, order.currency || 'INR', payment)
+      return await this.applyPlanUpgrade(userId, subscriptionTier, orderId, orderAmount, order.currency || 'INR', payment, order.notes)
     } catch (error) {
       console.error('Error handling payment success:', error)
       return false
@@ -210,7 +225,8 @@ export const paymentService = {
     orderId: string,
     orderAmount: number,
     currency: string,
-    payment: Payment | null
+    payment: Payment | null,
+    orderNotes?: Record<string, any>
   ): Promise<boolean> {
     const nextBillingDate = new Date()
     nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
@@ -242,6 +258,23 @@ export const paymentService = {
         current_period_start: new Date(),
         current_period_end: nextBillingDate
       })
+    }
+
+    // Count the discount code use; a failure here must not undo an upgrade the user paid for
+    if (orderNotes?.discount_code) {
+      try {
+        await discountService.recordRedemption({
+          code: orderNotes.discount_code,
+          userId,
+          orderId,
+          tier: subscriptionTier,
+          originalAmount: Number(orderNotes.original_amount),
+          discountAmount: Number(orderNotes.discount_amount),
+          finalAmount: orderAmount
+        })
+      } catch (error) {
+        console.error(`Could not record discount ${orderNotes.discount_code} for order ${orderId}:`, error)
+      }
     }
 
     if (payment) {
@@ -495,7 +528,7 @@ export const webhookService = {
       console.error(`Captured order ${orderId} has no user or paid tier in its notes; not upgrading`)
       return true
     }
-    if (orderAmount !== SUBSCRIPTION_PLANS[tier].price) {
+    if (orderAmount !== expectedOrderAmount(order, tier)) {
       console.error(`Captured order ${orderId} amount does not match the ${tier} price; not upgrading`)
       return true
     }
@@ -504,7 +537,7 @@ export const webhookService = {
       return true
     }
 
-    return await paymentService.applyPlanUpgrade(userId, tier, orderId, orderAmount, order.currency || 'INR', payment)
+    return await paymentService.applyPlanUpgrade(userId, tier, orderId, orderAmount, order.currency || 'INR', payment, order.notes)
   },
 
   // Process webhook payload
