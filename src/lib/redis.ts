@@ -2,11 +2,11 @@
 
 import { Redis } from '@upstash/redis'
 
-// Initialize Redis client
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+// Initialize Redis client; without Upstash credentials caching is skipped instead of
+// failing (and logging) on every call
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL?.trim()
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
+const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null
 
 // Cache key prefixes for organization
 export const CACHE_KEYS = {
@@ -40,6 +40,7 @@ export class CacheService {
    * Get data from cache
    */
   static async get<T>(key: string): Promise<T | null> {
+    if (!redis) return null
     try {
       const data = await redis.get(key)
       return data as T | null
@@ -53,6 +54,7 @@ export class CacheService {
    * Set data in cache with TTL
    */
   static async set(key: string, value: any, ttl?: number): Promise<boolean> {
+    if (!redis) return false
     try {
       if (ttl) {
         await redis.setex(key, ttl, JSON.stringify(value))
@@ -70,6 +72,7 @@ export class CacheService {
    * Delete data from cache
    */
   static async delete(key: string): Promise<boolean> {
+    if (!redis) return false
     try {
       await redis.del(key)
       return true
@@ -83,6 +86,7 @@ export class CacheService {
    * Delete multiple keys matching a pattern
    */
   static async deletePattern(pattern: string): Promise<boolean> {
+    if (!redis) return false
     try {
       const keys = await redis.keys(pattern)
       if (keys.length > 0) {
@@ -99,6 +103,7 @@ export class CacheService {
    * Check if key exists
    */
   static async exists(key: string): Promise<boolean> {
+    if (!redis) return false
     try {
       const result = await redis.exists(key)
       return result === 1
@@ -112,6 +117,7 @@ export class CacheService {
    * Increment a counter (useful for rate limiting)
    */
   static async increment(key: string, ttl?: number): Promise<number> {
+    if (!redis) return 0
     try {
       const count = await redis.incr(key)
       if (ttl && count === 1) {
@@ -128,6 +134,7 @@ export class CacheService {
    * Get multiple keys at once
    */
   static async mget<T>(keys: string[]): Promise<(T | null)[]> {
+    if (!redis) return keys.map(() => null)
     try {
       const values = await redis.mget(...keys)
       return values.map(value => value as T | null)
@@ -141,6 +148,7 @@ export class CacheService {
    * Set multiple keys at once
    */
   static async mset(keyValuePairs: Record<string, any>): Promise<boolean> {
+    if (!redis) return false
     try {
       const redisObject: Record<string, string> = {}
       Object.entries(keyValuePairs).forEach(([key, value]) => {
@@ -379,6 +387,7 @@ export class AICacheService {
 
 // Health check for Redis connection
 export async function checkRedisHealth(): Promise<boolean> {
+  if (!redis) return false
   try {
     await redis.ping()
     return true
