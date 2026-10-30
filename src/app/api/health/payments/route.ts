@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import Razorpay from 'razorpay'
+import { getRazorpayCredentials } from '@/lib/payments'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    const { keyId, keySecret } = getRazorpayCredentials()
+    if (!keyId || !keySecret) {
       return NextResponse.json({
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
@@ -30,8 +32,8 @@ export async function GET(request: NextRequest) {
     }
 
     const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
+      key_id: keyId,
+      key_secret: keySecret,
     })
 
     const checks = {
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
       const response = await fetch('https://api.razorpay.com/v1/methods', {
         method: 'GET',
         headers: {
-          'Authorization': `Basic ${Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64')}`,
+          'Authorization': `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`,
           'Content-Type': 'application/json'
         }
       })

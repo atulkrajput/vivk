@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { paymentService, paymentUtils, MIN_ORDER_AMOUNT_PAISE } from "@/lib/payments"
+import { paymentService, paymentUtils, getRazorpayCredentials, MIN_ORDER_AMOUNT_PAISE } from "@/lib/payments"
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from "@/lib/subscriptions"
 import { discountService, DiscountError, CHECKOUT_TIMEOUT_SECONDS, type AppliedDiscount } from "@/lib/discounts"
 
@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
         await discountService.release(discount.reservationId).catch((e) => console.error('Could not release discount reservation:', e))
       }
       if (error?.statusCode === 401) {
+        console.error("Razorpay rejected RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET (401):", error?.error?.description)
         return NextResponse.json(
           { error: "Payment gateway authentication failed" },
           { status: 401 }
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
         : null,
       // The discount's use is reserved only for a limited time
       checkoutTimeoutSeconds: discount ? CHECKOUT_TIMEOUT_SECONDS : null,
-      razorpayKeyId: process.env.RAZORPAY_KEY_ID
+      razorpayKeyId: getRazorpayCredentials().keyId
     })
 
   } catch (error) {

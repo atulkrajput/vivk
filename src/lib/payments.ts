@@ -9,14 +9,21 @@ import { discountService } from './discounts'
 // Razorpay rejects orders below ₹1
 export const MIN_ORDER_AMOUNT_PAISE = 100
 
+// Trimmed so a stray space/newline pasted into the hosting env doesn't make Razorpay return 401
+export function getRazorpayCredentials(): { keyId?: string; keySecret?: string } {
+  return {
+    keyId: process.env.RAZORPAY_KEY_ID?.trim() || undefined,
+    keySecret: process.env.RAZORPAY_KEY_SECRET?.trim() || undefined,
+  }
+}
+
 // Lazy initialization of Razorpay instance
 let razorpayInstance: Razorpay | null = null
 
 function getRazorpayInstance(): Razorpay {
   if (!razorpayInstance) {
-    const keyId = process.env.RAZORPAY_KEY_ID
-    const keySecret = process.env.RAZORPAY_KEY_SECRET
-    
+    const { keyId, keySecret } = getRazorpayCredentials()
+
     if (!keyId || !keySecret) {
       throw new Error('Razorpay credentials not configured')
     }
@@ -155,7 +162,7 @@ export const paymentService = {
     signature: string
   ): boolean {
     try {
-      const keySecret = process.env.RAZORPAY_KEY_SECRET
+      const { keySecret } = getRazorpayCredentials()
       if (!keySecret) {
         throw new Error('Razorpay credentials not configured')
       }
