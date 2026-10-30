@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { paymentService, paymentUtils, MIN_ORDER_AMOUNT_PAISE } from "@/lib/payments"
+import { paymentService, paymentUtils, getRazorpayCredentials, MIN_ORDER_AMOUNT_PAISE } from "@/lib/payments"
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from "@/lib/subscriptions"
 
 // POST /api/payments/create-order - Create Razorpay payment order
@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
       )
     } catch (error: any) {
       if (error?.statusCode === 401) {
+        console.error("Razorpay rejected RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET (401):", error?.error?.description)
         return NextResponse.json(
           { error: "Payment gateway authentication failed" },
           { status: 401 }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
         price: plan.price,
         priceDisplay: plan.priceDisplay
       },
-      razorpayKeyId: process.env.RAZORPAY_KEY_ID
+      razorpayKeyId: getRazorpayCredentials().keyId
     })
 
   } catch (error) {
