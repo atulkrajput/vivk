@@ -40,13 +40,72 @@ function loadRazorpayScript(): Promise<boolean> {
   })
 }
 
+interface AppliedDiscount {
+  code: string
+  originalAmount: number
+  discountAmount: number
+  finalAmount: number
+}
+
+function formatPaise(paise: number) {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(paise / 100)
+}
+
 export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [codeInput, setCodeInput] = useState('')
+  const [discount, setDiscount] = useState<AppliedDiscount | null>(null)
+  const [discountError, setDiscountError] = useState<string | null>(null)
+  const [isApplying, setIsApplying] = useState(false)
 
   useEffect(() => {
     if (isOpen) loadRazorpayScript()
   }, [isOpen])
+
+  // A code checked for one plan says nothing about another
+  useEffect(() => {
+    setDiscount(null)
+    setDiscountError(null)
+  }, [plan.id])
+
+  const applyDiscount = async () => {
+    const code = codeInput.trim()
+    if (!code) return
+    try {
+      setIsApplying(true)
+      setDiscountError(null)
+      const response = await fetch('/api/payments/discount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, subscriptionTier: plan.id }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setDiscount(null)
+        setDiscountError(data.error || 'Invalid discount code')
+        return
+      }
+      setDiscount({
+        code: data.code,
+        originalAmount: data.originalAmount,
+        discountAmount: data.discountAmount,
+        finalAmount: data.finalAmount,
+      })
+    } catch {
+      setDiscountError('Could not check this discount code')
+    } finally {
+      setIsApplying(false)
+    }
+  }
+
+  const removeDiscount = () => {
+    setDiscount(null)
+    setCodeInput('')
+    setDiscountError(null)
+  }
+
+  const payDisplay = discount ? formatPaise(discount.finalAmount) : plan.priceDisplay
 
   const handlePayment = async () => {
     try {
@@ -64,12 +123,17 @@ export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalP
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          subscriptionTier: plan.id
+          subscriptionTier: plan.id,
+          ...(discount ? { discountCode: discount.code } : {})
         }),
       })
 
       if (!orderResponse.ok) {
         const errorData = await orderResponse.json()
+        if (discount) {
+          // The code may have expired or run out since it was applied
+          setDiscount(null)
+        }
         throw new Error(errorData.error || 'Failed to create payment order')
       }
 
@@ -83,6 +147,7 @@ export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalP
         name: 'VIVK',
         description: `${plan.name} Plan Subscription`,
         order_id: orderData.order.id,
+        ...(orderData.checkoutTimeoutSeconds ? { timeout: orderData.checkoutTimeoutSeconds } : {}),
         handler: async function (response: any) {
           try {
             // Verify payment
@@ -175,8 +240,11 @@ export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalP
         <div className="p-6">
           {/* Plan Details */}
           <div className="text-center mb-6">
+            {discount && (
+              <div className="text-lg text-gray-400 line-through">{plan.priceDisplay}</div>
+            )}
             <div className="text-3xl font-bold text-gray-900 mb-2">
-              {plan.priceDisplay}
+              {payDisplay}
             </div>
             <div className="text-sm text-gray-500 mb-4">per month</div>
             
@@ -193,6 +261,51 @@ export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalP
                 ))}
               </ul>
             </div>
+          </div>
+
+          {/* Discount Code */}
+          <div className="mb-4">
+            {discount ? (
+              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="text-sm text-green-800">
+                  <span className="font-mono font-semibold">{discount.code}</span> applied — you save {formatPaise(discount.discountAmount)}
+                </div>
+                <button
+                  type="button"
+                  onClick={removeDiscount}
+                  disabled={isProcessing}
+                  className="text-xs text-green-700 underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <>
+                <label htmlFor="discount-code" className="block text-sm font-medium text-gray-700 mb-1">
+                  Have a discount code?
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="discount-code"
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter') applyDiscount() }}
+                    placeholder="Enter code"
+                    disabled={isProcessing || isApplying}
+                    className="flex-1 min-w-0 px-3 py-2 text-sm font-mono border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyDiscount}
+                    disabled={!codeInput.trim() || isProcessing || isApplying}
+                    className="px-4 py-2 text-sm font-medium border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-40"
+                  >
+                    {isApplying ? 'Checking...' : 'Apply'}
+                  </button>
+                </div>
+                {discountError && <p className="mt-1 text-xs text-red-600">{discountError}</p>}
+              </>
+            )}
           </div>
 
           {/* Error Message */}
@@ -219,7 +332,7 @@ export function PaymentModal({ isOpen, onClose, plan, onSuccess }: PaymentModalP
                 Processing...
               </div>
             ) : (
-              `Pay ${plan.priceDisplay} - Upgrade Now`
+              `Pay ${payDisplay} - Upgrade Now`
             )}
           </Button>
 

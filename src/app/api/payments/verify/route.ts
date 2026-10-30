@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { paymentService } from "@/lib/payments"
+import { paymentService, DiscountLimitRefundError } from "@/lib/payments"
 import { type SubscriptionTier } from "@/lib/subscriptions"
 
 // POST /api/payments/verify - Verify payment and upgrade subscription
@@ -45,13 +45,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle payment success
-    const success = await paymentService.handlePaymentSuccess(
-      session.user.id,
-      razorpay_payment_id,
-      razorpay_order_id,
-      razorpay_signature,
-      subscription_tier as SubscriptionTier
-    )
+    let success: boolean
+    try {
+      success = await paymentService.handlePaymentSuccess(
+        session.user.id,
+        razorpay_payment_id,
+        razorpay_order_id,
+        razorpay_signature,
+        subscription_tier as SubscriptionTier
+      )
+    } catch (error) {
+      if (error instanceof DiscountLimitRefundError) {
+        return NextResponse.json({ error: error.message }, { status: 409 })
+      }
+      throw error
+    }
 
     if (!success) {
       return NextResponse.json(

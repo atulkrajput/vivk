@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { paymentDb, subscriptionDb, userDb } from './db'
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from './subscriptions'
 import type { Payment } from '@/types/database.types'
+import { discountService } from './discounts'
 
 // Razorpay rejects orders below ₹1
 export const MIN_ORDER_AMOUNT_PAISE = 100
@@ -82,6 +83,25 @@ export interface RazorpayWebhookPayload {
   created_at: number
 }
 
+// What a Razorpay order for this tier must cost. Order notes are written only by our server
+// (create-order), so a discount recorded there is trusted; the discounted price must still
+// start from the current plan price.
+function expectedOrderAmount(order: any, tier: SubscriptionTier): number {
+  const price = SUBSCRIPTION_PLANS[tier].price
+  const notes = order.notes || {}
+  if (!notes.discount_code) return price
+  if (Number(notes.original_amount) !== price) return NaN
+  const discount = Number(notes.discount_amount)
+  return Number.isInteger(discount) && discount > 0 ? price - discount : NaN
+}
+
+// Thrown when a paid order's discount could no longer be honoured and the payment was refunded
+export class DiscountLimitRefundError extends Error {
+  constructor() {
+    super('This discount code ran out before your payment completed. Your payment has been refunded.')
+  }
+}
+
 // Payment operations
 export const paymentService = {
   // Create payment order for one-time payment
@@ -90,7 +110,8 @@ export const paymentService = {
     amount: number,
     currency: string = 'INR',
     receipt?: string,
-    subscriptionTier?: SubscriptionTier
+    subscriptionTier?: SubscriptionTier,
+    extraNotes?: Record<string, string>
   ): Promise<PaymentIntent> {
     if (!Number.isInteger(amount) || amount < MIN_ORDER_AMOUNT_PAISE) {
       throw new Error(`Order amount must be at least ${MIN_ORDER_AMOUNT_PAISE} paise`)
@@ -105,7 +126,8 @@ export const paymentService = {
         // Stored on Razorpay's side so verification doesn't depend on our payments table
         notes: {
           user_id: userId,
-          ...(subscriptionTier ? { subscription_tier: subscriptionTier } : {})
+          ...(subscriptionTier ? { subscription_tier: subscriptionTier } : {}),
+          ...(extraNotes || {})
         }
       })
 
@@ -191,7 +213,7 @@ export const paymentService = {
         console.error('Payment order was created for a different subscription tier')
         return false
       }
-      if (orderAmount !== SUBSCRIPTION_PLANS[subscriptionTier].price) {
+      if (orderAmount !== expectedOrderAmount(order, subscriptionTier)) {
         console.error('Payment amount does not match subscription tier')
         return false
       }
@@ -201,9 +223,15 @@ export const paymentService = {
       if (payment?.status === 'completed') {
         return true
       }
+      if (payment?.status === 'refunded') {
+        throw new DiscountLimitRefundError()
+      }
 
-      return await this.applyPlanUpgrade(userId, subscriptionTier, orderId, orderAmount, order.currency || 'INR', payment)
+      return await this.applyPlanUpgrade(userId, subscriptionTier, orderId, orderAmount, order.currency || 'INR', payment, order.notes, paymentId)
     } catch (error) {
+      if (error instanceof DiscountLimitRefundError) {
+        throw error
+      }
       console.error('Error handling payment success:', error)
       return false
     }
@@ -217,8 +245,38 @@ export const paymentService = {
     orderId: string,
     orderAmount: number,
     currency: string,
-    payment: Payment | null
+    payment: Payment | null,
+    orderNotes?: Record<string, any>,
+    razorpayPaymentId?: string
   ): Promise<boolean> {
+    // Count the discount use first. It is idempotent per order, and a failure throws before
+    // anything is applied, so verify reports failure and the webhook delivery is retried.
+    if (orderNotes?.discount_code) {
+      const honoured = await discountService.recordRedemption({
+        code: orderNotes.discount_code,
+        userId,
+        orderId,
+        tier: subscriptionTier,
+        originalAmount: Number(orderNotes.original_amount),
+        discountAmount: Number(orderNotes.discount_amount),
+        finalAmount: orderAmount
+      })
+      if (!honoured) {
+        // Paid after its reservation lapsed and the code's uses went to other checkouts
+        if (!razorpayPaymentId) {
+          throw new Error(`Order ${orderId} exceeds its discount limit but has no payment ID to refund`)
+        }
+        await this.refundPayment(razorpayPaymentId, 'discount_limit_reached')
+        if (payment) {
+          await paymentDb.updateStatus(payment.id, 'refunded')
+        } else {
+          await paymentDb.create({ user_id: userId, razorpay_payment_id: orderId, amount: orderAmount, currency, status: 'refunded' })
+        }
+        console.error(`Order ${orderId} paid after its discount ${orderNotes.discount_code} ran out; refunded`)
+        throw new DiscountLimitRefundError()
+      }
+    }
+
     const nextBillingDate = new Date()
     nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
 
@@ -283,6 +341,16 @@ export const paymentService = {
     } catch (error) {
       console.error('Error handling payment failure:', error)
       return false
+    }
+  },
+
+  // Refund whatever of this payment is not refunded yet, so a retried call does nothing
+  async refundPayment(razorpayPaymentId: string, reason: string): Promise<void> {
+    const razorpay = getRazorpayInstance()
+    const details: any = await razorpay.payments.fetch(razorpayPaymentId)
+    const remaining = Number(details.amount) - Number(details.amount_refunded || 0)
+    if (remaining > 0) {
+      await razorpay.payments.refund(razorpayPaymentId, { amount: remaining, notes: { reason } })
     }
   },
 
@@ -487,10 +555,10 @@ export const webhookService = {
 
   // Upgrade the user who paid for this order, in case the browser never reached /verify.
   // Unusable orders return true so Razorpay doesn't keep retrying them.
-  async handlePaymentCaptured(orderId: string): Promise<boolean> {
+  async handlePaymentCaptured(orderId: string, razorpayPaymentId?: string): Promise<boolean> {
     const payment = await paymentDb.getByRazorpayId(orderId)
-    if (payment?.status === 'completed') {
-      // Verify (or an earlier delivery) already applied it
+    if (payment?.status === 'completed' || payment?.status === 'refunded') {
+      // Verify (or an earlier delivery) already applied or refunded it
       return true
     }
 
@@ -502,7 +570,7 @@ export const webhookService = {
       console.error(`Captured order ${orderId} has no user or paid tier in its notes; not upgrading`)
       return true
     }
-    if (orderAmount !== SUBSCRIPTION_PLANS[tier].price) {
+    if (orderAmount !== expectedOrderAmount(order, tier)) {
       console.error(`Captured order ${orderId} amount does not match the ${tier} price; not upgrading`)
       return true
     }
@@ -511,7 +579,14 @@ export const webhookService = {
       return true
     }
 
-    return await paymentService.applyPlanUpgrade(userId, tier, orderId, orderAmount, order.currency || 'INR', payment)
+    try {
+      return await paymentService.applyPlanUpgrade(userId, tier, orderId, orderAmount, order.currency || 'INR', payment, order.notes, razorpayPaymentId)
+    } catch (error) {
+      if (error instanceof DiscountLimitRefundError) {
+        return true
+      }
+      throw error
+    }
   },
 
   // Process webhook payload
@@ -524,7 +599,7 @@ export const webhookService = {
           const payment = webhookPayload.payment?.entity
           if (payment?.order_id) {
             // Returning false makes the route answer 500, so Razorpay retries the delivery
-            return await this.handlePaymentCaptured(payment.order_id)
+            return await this.handlePaymentCaptured(payment.order_id, payment.id)
           }
           break
         }

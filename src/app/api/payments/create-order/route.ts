@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { paymentService, paymentUtils, getRazorpayCredentials, MIN_ORDER_AMOUNT_PAISE } from "@/lib/payments"
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from "@/lib/subscriptions"
+import { discountService, DiscountError, CHECKOUT_TIMEOUT_SECONDS, type AppliedDiscount } from "@/lib/discounts"
 
 // POST /api/payments/create-order - Create Razorpay payment order
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { subscriptionTier } = body
+    const { subscriptionTier, discountCode } = body
 
     if (!subscriptionTier || !['pro', 'business'].includes(subscriptionTier)) {
       return NextResponse.json(
@@ -39,18 +40,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Re-check the discount and hold a use for this checkout; the amount the user pays is only
+    // ever computed server-side
+    let discount: (AppliedDiscount & { reservationId: string }) | null = null
+    if (discountCode) {
+      try {
+        discount = await discountService.reserve(String(discountCode), session.user.id, subscriptionTier as SubscriptionTier)
+      } catch (error) {
+        if (error instanceof DiscountError) {
+          return NextResponse.json({ error: error.message }, { status: 400 })
+        }
+        throw error
+      }
+    }
+    const amount = discount ? discount.finalAmount : plan.price
+
     // Create payment order
     const receipt = paymentUtils.generateReceiptId(session.user.id, subscriptionTier)
     let paymentOrder
     try {
       paymentOrder = await paymentService.createPaymentOrder(
         session.user.id,
-        plan.price, // Amount in paise
+        amount, // Amount in paise
         'INR',
         receipt,
-        subscriptionTier as SubscriptionTier
+        subscriptionTier as SubscriptionTier,
+        discount
+          ? { discount_code: discount.code.code, discount_amount: String(discount.discountAmount), original_amount: String(discount.originalAmount) }
+          : undefined
       )
     } catch (error: any) {
+      if (discount) {
+        await discountService.release(discount.reservationId).catch((e) => console.error('Could not release discount reservation:', e))
+      }
       if (error?.statusCode === 401) {
         console.error("Razorpay rejected RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET (401):", error?.error?.description)
         return NextResponse.json(
@@ -62,6 +84,12 @@ export async function POST(request: NextRequest) {
         { error: error?.error?.description || "Failed to create payment order" },
         { status: 500 }
       )
+    }
+
+    if (discount) {
+      // Lets verify/webhook confirm this reservation; if it fails they record the use themselves
+      await discountService.attachOrder(discount.reservationId, paymentOrder.id)
+        .catch((e) => console.error('Could not link discount reservation to order:', e))
     }
 
     return NextResponse.json({
@@ -78,6 +106,16 @@ export async function POST(request: NextRequest) {
         price: plan.price,
         priceDisplay: plan.priceDisplay
       },
+      discount: discount
+        ? {
+            code: discount.code.code,
+            originalAmount: discount.originalAmount,
+            discountAmount: discount.discountAmount,
+            finalAmount: discount.finalAmount
+          }
+        : null,
+      // The discount's use is reserved only for a limited time
+      checkoutTimeoutSeconds: discount ? CHECKOUT_TIMEOUT_SECONDS : null,
       razorpayKeyId: getRazorpayCredentials().keyId
     })
 
