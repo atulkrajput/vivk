@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from '@/lib/admin-session'
 
 // Simple in-memory rate limiting for Edge Runtime
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
@@ -36,7 +37,7 @@ export async function middleware(request: NextRequest) {
   const isPublicPage = ['/', '/landing', '/login', '/register', '/reset-password', '/maintenance', '/privacy', '/terms', '/refund-policy']
     .some(route => pathname === route)
   const isAuthApi = pathname.startsWith('/api/auth')
-  const isPublicApi = pathname.startsWith('/api/health') || pathname.startsWith('/api/debug') || pathname.startsWith('/api/payments/webhook') || pathname.startsWith('/api/plans')
+  const isPublicApi = pathname.startsWith('/api/health') || pathname.startsWith('/api/payments/webhook') || pathname.startsWith('/api/plans')
 
   // No rate limiting on auth API routes (NextAuth needs multiple calls)
   // Only rate limit non-auth API routes
@@ -47,6 +48,32 @@ export async function middleware(request: NextRequest) {
         { status: 429 }
       )
     }
+  }
+
+  // Admin area: guarded only by the separate admin session, never by a user session
+  const isAdminLoginPage = pathname === '/admin/login'
+  const isAdminAuthApi = pathname.startsWith('/api/admin-auth/')
+  const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/')
+  const isAdminApi = pathname === '/api/admin' || pathname.startsWith('/api/admin/') || pathname.startsWith('/api/debug')
+
+  if (isAdminLoginPage || isAdminAuthApi) {
+    return NextResponse.next()
+  }
+
+  if (isAdminPage || isAdminApi) {
+    const adminSession = await verifyAdminToken(request.cookies.get(ADMIN_COOKIE_NAME)?.value)
+    if (adminSession) {
+      return NextResponse.next()
+    }
+    if (isAdminApi) {
+      return NextResponse.json(
+        { error: 'Admin authentication required', code: 'ADMIN_UNAUTHORIZED' },
+        { status: 401 }
+      )
+    }
+    const adminLoginUrl = new URL('/admin/login', request.url)
+    adminLoginUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(adminLoginUrl)
   }
 
   // Allow all public routes and auth API

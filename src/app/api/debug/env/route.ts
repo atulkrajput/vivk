@@ -1,12 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { getAdminSession } from '@/lib/admin'
 
-export async function GET(request: NextRequest) {
-  // Only allow in development or with special header
-  const isDev = process.env.NODE_ENV === 'development'
-  const debugHeader = request.headers.get('x-debug-key')
-  
-  if (!isDev && debugHeader !== 'vivk-debug-2026') {
-    return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
+// Admin-only: reports which env vars are set, never any part of their values
+export async function GET() {
+  if (!(await getAdminSession())) {
+    return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
   }
 
   const envVars = [
@@ -28,8 +26,7 @@ export async function GET(request: NextRequest) {
     acc[varName] = {
       exists: !!value,
       isPlaceholder: value?.includes('placeholder') || false,
-      length: value?.length || 0,
-      preview: value ? value.substring(0, 10) + '...' : 'undefined'
+      length: value?.length || 0
     }
     return acc
   }, {} as Record<string, any>)

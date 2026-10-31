@@ -68,7 +68,7 @@ After deployment, check:
 1. **Environment Status**: 
    ```
    GET https://www.vivk.in/api/debug/env
-   Headers: x-debug-key: vivk-debug-2026
+   (requires an admin session: sign in at /admin/login first)
    ```
 
 2. **Health Check**:

@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getAdminSession } from "@/lib/admin"
 import { AI_PROVIDERS, getCurrentProvider, getProviderConfig } from "@/lib/ai-providers"
 import type { AIProvider } from "@/lib/ai-providers"
 
 // GET /api/admin/ai-provider - Get current AI provider configuration
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const session = await getAdminSession()
+    if (!session) {
       return NextResponse.json(
-        { error: "Authentication required" },
+        { error: "Admin authentication required" },
         { status: 401 }
       )
     }
 
-    // For MVP, allow any authenticated user to view provider info
-    // In production, this should be restricted to admin users
     const currentProvider = getCurrentProvider()
     const config = getProviderConfig(currentProvider)
 
@@ -42,16 +40,14 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/ai-provider - Switch AI provider (for development/testing)
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const session = await getAdminSession()
+    if (!session) {
       return NextResponse.json(
-        { error: "Authentication required" },
+        { error: "Admin authentication required" },
         { status: 401 }
       )
     }
 
-    // For MVP, allow any authenticated user to switch providers
-    // In production, this should be restricted to admin users
     const body = await request.json()
     const { provider } = body
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { isAdminEmail } from '@/lib/admin'
+import { getAdminSession } from '@/lib/admin'
 import { promises as fs } from 'fs'
 import path from 'path'
 
@@ -33,9 +32,9 @@ async function writeTrackingCodes(codes: any[]) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.email || !isAdminEmail(session.user.email)) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    const session = await getAdminSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
     }
 
     const data = await readTrackingCodes()
@@ -48,9 +47,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.email || !isAdminEmail(session.user.email)) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    const session = await getAdminSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
     }
 
     const { codes } = await request.json()

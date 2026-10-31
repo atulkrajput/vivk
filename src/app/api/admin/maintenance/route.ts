@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getAdminSession } from '@/lib/admin'
 import { setMaintenanceMode, isMaintenanceMode, getMaintenanceMessage } from '@/lib/error-handling'
 import { createErrorResponse, VivkError, ErrorCode, ErrorSeverity } from '@/lib/error-handling'
 import { z } from 'zod'
@@ -14,11 +14,8 @@ const maintenanceSchema = z.object({
 // GET /api/admin/maintenance - Get maintenance mode status
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    
-    // For MVP, we'll use a simple admin check
-    // In production, you'd have proper admin role checking
-    if (!session?.user?.email?.endsWith('@vivk.in')) {
+    const session = await getAdminSession()
+    if (!session) {
       throw new VivkError(
         ErrorCode.UNAUTHORIZED,
         'Admin access required',
@@ -41,10 +38,8 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/maintenance - Set maintenance mode
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    
-    // Admin access check
-    if (!session?.user?.email?.endsWith('@vivk.in')) {
+    const session = await getAdminSession()
+    if (!session) {
       throw new VivkError(
         ErrorCode.UNAUTHORIZED,
         'Admin access required',
@@ -64,7 +59,7 @@ export async function POST(request: NextRequest) {
       enabled,
       message,
       estimatedTime,
-      changedBy: session.user.email,
+      changedBy: session.email,
       timestamp: new Date().toISOString()
     })
 

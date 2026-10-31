@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
+import { getAdminSession } from "@/lib/admin"
 import { getAvailableModels, clearModelsCache } from "@/lib/model-router"
 import type { SubscriptionTier } from "@/lib/ai-providers"
 
 // GET /api/admin/models - List all available Groq models for a tier
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const session = await getAdminSession()
+    if (!session) {
       return NextResponse.json(
-        { error: "Authentication required" },
+        { error: "Admin authentication required" },
         { status: 401 }
       )
     }
@@ -51,10 +51,10 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/models/refresh - Clear cache and reload models
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const session = await getAdminSession()
+    if (!session) {
       return NextResponse.json(
-        { error: "Authentication required" },
+        { error: "Admin authentication required" },
         { status: 401 }
       )
     }

@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { auth } from '@/lib/auth'
-import { isAdminEmail } from '@/lib/admin'
+import { getAdminSession } from '@/lib/admin'
 import { rawQuery } from '@/lib/db'
 import { ensureDiscountTables, generateCode, normalizeCode } from '@/lib/discounts'
-
-async function requireAdminSession() {
-  const session = await auth()
-  return session?.user?.email && isAdminEmail(session.user.email) ? session : null
-}
 
 function parseDate(value: unknown): Date | null | 'invalid' {
   if (value === undefined || value === null || value === '') return null
@@ -19,8 +13,8 @@ function parseDate(value: unknown): Date | null | 'invalid' {
 // GET /api/admin/discounts - All discount codes with redemption totals
 export async function GET() {
   try {
-    if (!(await requireAdminSession())) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (!(await getAdminSession())) {
+      return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
     }
     await ensureDiscountTables()
 
@@ -52,8 +46,8 @@ export async function GET() {
 // POST /api/admin/discounts - Create a discount code (code is generated when left blank)
 export async function POST(request: NextRequest) {
   try {
-    if (!(await requireAdminSession())) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (!(await getAdminSession())) {
+      return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
     }
     await ensureDiscountTables()
 
@@ -135,8 +129,8 @@ export async function POST(request: NextRequest) {
 // PATCH /api/admin/discounts - Enable or disable a code
 export async function PATCH(request: NextRequest) {
   try {
-    if (!(await requireAdminSession())) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (!(await getAdminSession())) {
+      return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
     }
     await ensureDiscountTables()
 
@@ -155,8 +149,8 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/admin/discounts?id= - Delete a code that has never been redeemed
 export async function DELETE(request: NextRequest) {
   try {
-    if (!(await requireAdminSession())) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (!(await getAdminSession())) {
+      return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
     }
     await ensureDiscountTables()
 

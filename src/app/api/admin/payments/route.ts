@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { isAdminEmail } from '@/lib/admin'
+import { getAdminSession } from '@/lib/admin'
 import { rawQuery } from '@/lib/db'
 
 const STATUSES = ['pending', 'completed', 'failed', 'refunded']
@@ -9,9 +8,9 @@ const PAGE_SIZE = 25
 // GET /api/admin/payments - All payment transactions, with optional status filter and search
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.email || !isAdminEmail(session.user.email)) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    const session = await getAdminSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)

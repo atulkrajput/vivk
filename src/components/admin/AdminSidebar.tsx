@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
 import {
   LayoutDashboard,
   Users,
@@ -38,6 +37,14 @@ const navItems = [
 
 export function AdminSidebar({ userEmail }: AdminSidebarProps) {
   const pathname = usePathname()
+
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/admin-auth/logout', { method: 'POST' })
+    } finally {
+      window.location.href = '/admin/login'
+    }
+  }
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin'
@@ -93,7 +100,7 @@ export function AdminSidebar({ userEmail }: AdminSidebarProps) {
             <p className="text-[10px] text-slate-400">Administrator</p>
           </div>
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={handleSignOut}
             className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
             title="Sign out"
             aria-label="Sign out"

@@ -22,7 +22,7 @@ export function usePerformanceMonitoring() {
    */
   const recordMetric = useCallback(async (metric: PerformanceMetric) => {
     try {
-      await fetch('/api/admin/performance', {
+      await fetch('/api/performance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ export function useAPIPerformanceMonitoring() {
     const duration = endTime - startTime
     
     try {
-      await fetch('/api/admin/performance', {
+      await fetch('/api/performance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
