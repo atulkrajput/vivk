@@ -1,6 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
 import Groq from 'groq-sdk'
 import type { Message } from '@/types/database.types'
+import {
+  withKeyRotation,
+  streamWithKeyRotation,
+  hasAnyKey,
+  KeysExhaustedError,
+  ProviderUnavailableError,
+  ROTATING_PROVIDERS,
+  type RotatingProvider,
+} from './ai-keys'
 
 // AI Provider types
 export type AIProvider = 'anthropic' | 'groq' | 'openai' | 'custom'
@@ -41,9 +50,9 @@ export const AI_PROVIDERS: Record<AIProvider, AIProviderConfig> = {
   anthropic: {
     name: 'Anthropic Claude',
     models: {
-      free: 'claude-3-haiku-20240307',
-      pro: 'claude-3-5-sonnet-20241022',
-      business: 'claude-3-5-sonnet-20241022'
+      free: process.env.ANTHROPIC_MODEL_FREE || 'claude-3-haiku-20240307',
+      pro: process.env.ANTHROPIC_MODEL_PRO || 'claude-3-5-sonnet-20241022',
+      business: process.env.ANTHROPIC_MODEL_BUSINESS || 'claude-3-5-sonnet-20241022'
     },
     maxTokens: {
       free: 1024,
@@ -91,16 +100,10 @@ export function getCurrentProvider(): AIProvider {
   return 'anthropic'
 }
 
-// Get the provider to use for a specific tier
-// Free users -> Groq (fast & free), Paid users -> Anthropic Claude Sonnet
-export function getProviderForTier(tier: SubscriptionTier): AIProvider {
-  if (tier === 'free') {
-    // Use Groq for free tier if key is available
-    if (process.env.GROQ_API_KEY) return 'groq'
-    return 'anthropic'
-  }
-  // Pro and Business users get Anthropic Claude Sonnet
-  return 'anthropic'
+// Providers to try for a tier, in order. Free users -> Groq first, paid users -> Anthropic first;
+// when every key of one provider is busy or failing, the next provider is used.
+export function getProviderOrder(tier: SubscriptionTier): RotatingProvider[] {
+  return tier === 'free' ? ['groq', 'anthropic'] : ['anthropic', 'groq']
 }
 
 // Get provider configuration
@@ -132,13 +135,9 @@ export interface AIService {
 class AnthropicService implements AIService {
   private client: Anthropic
 
-  constructor() {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error('ANTHROPIC_API_KEY environment variable is required')
-    }
-    this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY
-    })
+  constructor(apiKey: string) {
+    // Retries are handled by key rotation, so fail fast and move to the next key
+    this.client = new Anthropic({ apiKey, maxRetries: 0 })
   }
 
   private formatMessages(messages: Message[]): Anthropic.MessageParam[] {
@@ -221,13 +220,9 @@ class AnthropicService implements AIService {
 class GroqService implements AIService {
   private client: Groq
 
-  constructor() {
-    if (!process.env.GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY environment variable is required')
-    }
-    this.client = new Groq({
-      apiKey: process.env.GROQ_API_KEY
-    })
+  constructor(apiKey: string) {
+    // Retries are handled by key rotation, so fail fast and move to the next key
+    this.client = new Groq({ apiKey, maxRetries: 0 })
   }
 
   private formatMessages(messages: Message[]): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
@@ -331,52 +326,6 @@ class GroqService implements AIService {
   }
 }
 
-// OpenAI implementation (placeholder)
-class OpenAIService implements AIService {
-  constructor() {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY environment variable is required')
-    }
-  }
-
-  async generateResponse(messages: Message[], tier: SubscriptionTier): Promise<string> {
-    // TODO: Implement OpenAI integration
-    throw new Error('OpenAI integration not yet implemented')
-  }
-
-  async* generateStreamingResponse(messages: Message[], tier: SubscriptionTier): AsyncIterable<string> {
-    // TODO: Implement OpenAI streaming
-    throw new Error('OpenAI streaming not yet implemented')
-  }
-
-  estimateTokens(content: string): number {
-    return Math.ceil(content.length / 4)
-  }
-}
-
-// Custom provider implementation (placeholder)
-class CustomService implements AIService {
-  constructor() {
-    if (!process.env.CUSTOM_AI_API_KEY) {
-      throw new Error('CUSTOM_AI_API_KEY environment variable is required')
-    }
-  }
-
-  async generateResponse(messages: Message[], tier: SubscriptionTier): Promise<string> {
-    // TODO: Implement custom provider integration
-    throw new Error('Custom provider integration not yet implemented')
-  }
-
-  async* generateStreamingResponse(messages: Message[], tier: SubscriptionTier): AsyncIterable<string> {
-    // TODO: Implement custom provider streaming
-    throw new Error('Custom provider streaming not yet implemented')
-  }
-
-  estimateTokens(content: string): number {
-    return Math.ceil(content.length / 4)
-  }
-}
-
 // Dev/mock AI service for local development without API keys
 class DevMockService implements AIService {
   private responses: string[] = [
@@ -410,88 +359,74 @@ class DevMockService implements AIService {
   }
 }
 
-// Check if an API key looks valid (not a placeholder)
-function isValidApiKey(key: string | undefined): boolean {
-  if (!key || key.length < 20) return false
-  const placeholders = ['your-', 'placeholder', 'xxx', 'test', 'fake', 'dummy', 'change-me']
-  const lower = key.toLowerCase()
-  if (placeholders.some(p => lower.includes(p))) return false
+// One service instance per key, so SDK clients are reused across requests
+const _services = new Map<string, AIService>()
+
+function getService(provider: RotatingProvider, apiKey: string): AIService {
+  const cacheKey = `${provider}:${apiKey}`
+  let service = _services.get(cacheKey)
+  if (!service) {
+    service = provider === 'groq' ? new GroqService(apiKey) : new AnthropicService(apiKey)
+    _services.set(cacheKey, service)
+  }
+  return service
+}
+
+function canFallBack(error: unknown): boolean {
+  return error instanceof KeysExhaustedError || error instanceof ProviderUnavailableError
+}
+
+// Mock responses only in local development with no keys configured anywhere
+async function shouldUseDevMock(): Promise<boolean> {
+  if (process.env.NODE_ENV === 'production') return false
+  for (const provider of ROTATING_PROVIDERS) {
+    if (await hasAnyKey(provider)) return false
+  }
+  console.warn('⚠️  No AI API keys configured. Using mock AI responses for development.')
   return true
 }
 
-// Stricter check for Anthropic keys
-function isValidAnthropicKey(key: string | undefined): boolean {
-  if (!key) return false
-  // Anthropic keys always start with sk-ant-
-  return key.startsWith('sk-ant-') && key.length > 30
-}
-
-// Check if a Groq API key is valid
-function isValidGroqKey(key: string | undefined): boolean {
-  if (!key) return false
-  // Groq keys start with gsk_
-  return key.startsWith('gsk_') && key.length > 20
-}
-
-// Service factory
-export function createAIService(provider?: AIProvider): AIService {
-  const currentProvider = provider || getCurrentProvider()
-  
-  // Fall back to mock service if no valid API key is configured
-  switch (currentProvider) {
-    case 'groq':
-      if (isValidGroqKey(process.env.GROQ_API_KEY)) {
-        return new GroqService()
-      }
-      console.warn('⚠️  No valid GROQ_API_KEY found. Using mock AI responses for development.')
-      return new DevMockService()
-    case 'anthropic':
-      if (isValidAnthropicKey(process.env.ANTHROPIC_API_KEY)) {
-        return new AnthropicService()
-      }
-      console.warn('⚠️  No valid ANTHROPIC_API_KEY found. Using mock AI responses for development.')
-      return new DevMockService()
-    case 'openai':
-      if (isValidApiKey(process.env.OPENAI_API_KEY)) {
-        return new OpenAIService()
-      }
-      console.warn('⚠️  No valid OPENAI_API_KEY found. Using mock AI responses for development.')
-      return new DevMockService()
-    case 'custom':
-      if (isValidApiKey(process.env.CUSTOM_AI_API_KEY)) {
-        return new CustomService()
-      }
-      console.warn('⚠️  No valid CUSTOM_AI_API_KEY found. Using mock AI responses for development.')
-      return new DevMockService()
-    default:
-      throw new Error(`Unsupported AI provider: ${currentProvider}`)
-  }
-}
-
-// Lazy-initialized service instances per provider
-const _services: Partial<Record<AIProvider, AIService>> = {}
-
-function getServiceForTier(tier: SubscriptionTier): AIService {
-  const provider = getProviderForTier(tier)
-  if (!_services[provider]) {
-    _services[provider] = createAIService(provider)
-  }
-  return _services[provider]!
-}
+const devMock = new DevMockService()
 
 export const aiService: AIService = {
-  generateResponse(messages: Message[], tier: SubscriptionTier): Promise<string> {
-    return getServiceForTier(tier).generateResponse(messages, tier)
-  },
-  generateStreamingResponse(messages: Message[], tier: SubscriptionTier): AsyncIterable<string> {
-    return getServiceForTier(tier).generateStreamingResponse(messages, tier)
-  },
-  estimateTokens(content: string): number {
-    // Token estimation doesn't depend on tier
-    const provider = getCurrentProvider()
-    if (!_services[provider]) {
-      _services[provider] = createAIService(provider)
+  async generateResponse(messages: Message[], tier: SubscriptionTier): Promise<string> {
+    if (await shouldUseDevMock()) return devMock.generateResponse(messages, tier)
+
+    let lastError: unknown = null
+    for (const provider of getProviderOrder(tier)) {
+      try {
+        return await withKeyRotation(provider, apiKey => getService(provider, apiKey).generateResponse(messages, tier))
+      } catch (error) {
+        if (!canFallBack(error)) throw error
+        console.warn(`AI provider ${provider} unavailable, trying next:`, (error as Error).message)
+        lastError = error
+      }
     }
-    return _services[provider]!.estimateTokens(content)
+    throw lastError
+  },
+
+  async* generateStreamingResponse(messages: Message[], tier: SubscriptionTier): AsyncIterable<string> {
+    if (await shouldUseDevMock()) {
+      yield* devMock.generateStreamingResponse(messages, tier)
+      return
+    }
+
+    let lastError: unknown = null
+    for (const provider of getProviderOrder(tier)) {
+      try {
+        // Rotation only throws a fallback error before any chunk has been sent
+        yield* streamWithKeyRotation(provider, apiKey => getService(provider, apiKey).generateStreamingResponse(messages, tier))
+        return
+      } catch (error) {
+        if (!canFallBack(error)) throw error
+        console.warn(`AI provider ${provider} unavailable, trying next:`, (error as Error).message)
+        lastError = error
+      }
+    }
+    throw lastError
+  },
+
+  estimateTokens(content: string): number {
+    return Math.ceil(content.length / 4)
   }
 }

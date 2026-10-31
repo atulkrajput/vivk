@@ -1,6 +1,7 @@
 import { aiService, getCurrentProvider, getProviderConfig } from './ai-providers'
 import type { Message } from '@/types/database.types'
 import type { SubscriptionTier } from './ai-providers'
+import { KeysExhaustedError, ProviderUnavailableError } from './ai-keys'
 
 // Re-export types for backward compatibility
 export type { SubscriptionTier, AIProvider } from './ai-providers'
@@ -21,6 +22,12 @@ export async function generateResponse(
     console.error('AI generation error:', error)
     
     // Handle common errors
+    if (error instanceof KeysExhaustedError) {
+      throw new Error('AI service is currently busy. Please try again in a moment.')
+    }
+    if (error instanceof ProviderUnavailableError) {
+      throw new Error('AI service is temporarily unavailable. Please try again later.')
+    }
     if (error instanceof Error) {
       if (error.message.includes('rate limit') || error.message.includes('429')) {
         throw new Error('AI service is currently busy. Please try again in a moment.')
@@ -49,6 +56,12 @@ export async function* generateStreamingResponse(
     console.error('AI streaming error:', error)
     
     // Handle common errors
+    if (error instanceof KeysExhaustedError) {
+      throw new Error('AI service is currently busy. Please try again in a moment.')
+    }
+    if (error instanceof ProviderUnavailableError) {
+      throw new Error('AI service is temporarily unavailable. Please try again later.')
+    }
     if (error instanceof Error) {
       if (error.message.includes('rate limit') || error.message.includes('429')) {
         throw new Error('AI service is currently busy. Please try again in a moment.')
