@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TicketPercent, Plus, Copy, Check, Trash2, Shuffle } from 'lucide-react'
+import { TicketPercent, Plus, Copy, Check, Trash2, Shuffle, Pencil, Search, X } from 'lucide-react'
 
 interface DiscountCode {
   id: string
@@ -56,6 +56,14 @@ function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : null
 }
 
+// datetime-local wants local time without seconds or zone
+function toLocalInput(value: string | null) {
+  if (!value) return ''
+  const d = new Date(value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function codeStatus(c: DiscountCode): { label: string; style: string } {
   const now = Date.now()
   if (!c.is_active) return { label: 'Disabled', style: 'bg-slate-100 text-slate-600' }
@@ -75,6 +83,8 @@ export default function AdminDiscountsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [created, setCreated] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [editing, setEditing] = useState<DiscountCode | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     fetchCodes()
@@ -100,16 +110,54 @@ export default function AdminDiscountsPage() {
     }
   }
 
+  const typedCode = form.code.trim().toUpperCase()
+  const existingCode = !editing && typedCode ? codes.find((c) => c.code === typedCode) : undefined
+  const editingUsed = editing ? editing.used_count > 0 : false
+
+  const query = search.trim().toUpperCase()
+  const visibleCodes = query
+    ? codes.filter((c) => c.code.includes(query) || (c.description || '').toUpperCase().includes(query))
+    : codes
+
+  const startEdit = (c: DiscountCode) => {
+    setEditing(c)
+    setCreated(null)
+    setFormError(null)
+    setForm({
+      code: c.code,
+      description: c.description || '',
+      discountType: c.discount_type,
+      discountValue: String(c.discount_type === 'percent' ? c.discount_value : c.discount_value / 100),
+      applicableTier: c.applicable_tier,
+      maxUses: c.max_uses === null ? '' : String(c.max_uses),
+      maxUsesPerUser: String(c.max_uses_per_user),
+      validFrom: toLocalInput(c.valid_from),
+      validUntil: toLocalInput(c.valid_until),
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const cancelEdit = () => {
+    setEditing(null)
+    setForm(EMPTY_FORM)
+    setFormError(null)
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (existingCode) {
+      setFormError(`Code ${existingCode.code} already exists`)
+      return
+    }
     setFormError(null)
     setIsSaving(true)
     try {
       const response = await fetch('/api/admin/discounts', {
-        method: 'POST',
+        method: editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          ...(editing ? { id: editing.id } : {}),
           // datetime-local is in the admin's timezone; send an absolute time
           validFrom: form.validFrom ? new Date(form.validFrom).toISOString() : '',
           validUntil: form.validUntil ? new Date(form.validUntil).toISOString() : '',
@@ -117,14 +165,15 @@ export default function AdminDiscountsPage() {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        setFormError(data.error || 'Failed to create discount code')
+        setFormError(data.error || (editing ? 'Failed to update discount code' : 'Failed to create discount code'))
         return
       }
-      setCreated(data.code.code)
+      setCreated(editing ? null : data.code.code)
+      setEditing(null)
       setForm(EMPTY_FORM)
       fetchCodes()
     } catch (error) {
-      setFormError('Failed to create discount code')
+      setFormError(editing ? 'Failed to update discount code' : 'Failed to create discount code')
     } finally {
       setIsSaving(false)
     }
@@ -171,8 +220,15 @@ export default function AdminDiscountsPage() {
       {/* Create */}
       <form onSubmit={handleCreate} className="vivk-card p-5 mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <Plus className="w-4 h-4 text-vivk-blue" />
-          <h2 className="font-semibold text-vivk-navy">Generate a code</h2>
+          {editing ? <Pencil className="w-4 h-4 text-vivk-blue" /> : <Plus className="w-4 h-4 text-vivk-blue" />}
+          <h2 className="font-semibold text-vivk-navy">
+            {editing ? <>Edit <span className="font-mono">{editing.code}</span></> : 'Generate a code'}
+          </h2>
+          {editing && (
+            <button type="button" onClick={cancelEdit} className="ml-auto text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
+              <X className="w-3.5 h-3.5" /> Cancel edit
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -183,11 +239,13 @@ export default function AdminDiscountsPage() {
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
                 placeholder="Leave blank to auto-generate"
-                className={`${inputClass} font-mono`}
+                className={`${inputClass} font-mono ${editing ? 'bg-slate-50 text-slate-500' : ''}`}
                 maxLength={40}
+                readOnly={!!editing}
               />
               <button
                 type="button"
+                disabled={!!editing}
                 title="Random code"
                 aria-label="Random code"
                 onClick={() => {
@@ -200,10 +258,16 @@ export default function AdminDiscountsPage() {
                 <Shuffle className="w-4 h-4" />
               </button>
             </div>
+            {existingCode && (
+              <p className="text-xs text-red-600 mt-1">
+                Already exists ({codeStatus(existingCode).label.toLowerCase()}).{' '}
+                <button type="button" onClick={() => startEdit(existingCode)} className="underline">Edit it</button>
+              </p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Discount type</label>
-            <select value={form.discountType} onChange={update('discountType')} className={inputClass}>
+            <select value={form.discountType} onChange={update('discountType')} className={inputClass} disabled={editingUsed}>
               <option value="percent">Percentage (%)</option>
               <option value="flat">Flat amount (₹)</option>
             </select>
@@ -220,6 +284,7 @@ export default function AdminDiscountsPage() {
               onChange={update('discountValue')}
               placeholder={form.discountType === 'percent' ? 'e.g. 20' : 'e.g. 200'}
               className={inputClass}
+              disabled={editingUsed}
             />
           </div>
           <div>
@@ -254,6 +319,7 @@ export default function AdminDiscountsPage() {
 
         <p className="text-xs text-slate-500 mt-3">
           Leave dates blank to start now and never expire. The final price never goes below ₹1 (Razorpay minimum).
+          {editingUsed && ' This code has been used, so its discount amount is locked; limits, plan and dates can still change.'}
         </p>
 
         {formError && <p className="text-sm text-red-600 mt-3">{formError}</p>}
@@ -268,18 +334,28 @@ export default function AdminDiscountsPage() {
 
         <button
           type="submit"
-          disabled={isSaving}
+          disabled={isSaving || !!existingCode}
           className="mt-4 px-4 py-2 rounded-lg bg-vivk-blue text-white text-sm font-medium disabled:opacity-50 hover:opacity-90"
         >
-          {isSaving ? 'Creating...' : 'Create discount code'}
+          {editing ? (isSaving ? 'Saving...' : 'Save changes') : isSaving ? 'Creating...' : 'Create discount code'}
         </button>
       </form>
 
       {/* Codes */}
       <div className="vivk-card overflow-hidden mb-8">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+        <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center gap-2">
           <TicketPercent className="w-4 h-4 text-vivk-blue" />
           <h2 className="font-semibold text-vivk-navy">All codes</h2>
+          <div className="relative ml-auto w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Check if a code exists"
+              className={`${inputClass} pl-8 font-mono`}
+              aria-label="Search codes"
+            />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -300,10 +376,12 @@ export default function AdminDiscountsPage() {
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-500">Loading discount codes...</td></tr>
               ) : error ? (
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-red-600">{error}</td></tr>
-              ) : codes.length === 0 ? (
-                <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-500">No discount codes yet</td></tr>
+              ) : visibleCodes.length === 0 ? (
+                <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-500">
+                  {query ? <>No code matches <span className="font-mono">{query}</span>, so it is free to create</> : 'No discount codes yet'}
+                </td></tr>
               ) : (
-                codes.map((c) => {
+                visibleCodes.map((c) => {
                   const status = codeStatus(c)
                   return (
                     <tr key={c.id} className="border-b border-slate-50">
@@ -334,6 +412,9 @@ export default function AdminDiscountsPage() {
                         <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${status.style}`}>{status.label}</span>
                       </td>
                       <td className="px-5 py-3 text-right whitespace-nowrap">
+                        <button onClick={() => startEdit(c)} className="text-xs font-medium text-vivk-blue hover:underline mr-3">
+                          Edit
+                        </button>
                         <button onClick={() => toggleActive(c)} className="text-xs font-medium text-vivk-blue hover:underline mr-3">
                           {c.is_active ? 'Disable' : 'Enable'}
                         </button>
