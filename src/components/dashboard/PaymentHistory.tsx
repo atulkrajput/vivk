@@ -13,6 +13,11 @@ interface Payment {
   description?: string
 }
 
+// Payments are stored as 'completed' once paid; older data may use Razorpay's names
+function isPaid(status: string) {
+  return ['completed', 'success', 'captured'].includes(status.toLowerCase())
+}
+
 interface PaymentHistoryProps {
   payments?: Payment[]
   className?: string
@@ -53,6 +58,7 @@ export function PaymentHistory({ payments: initialPayments, className = '' }: Pa
 
   const getStatusDisplay = (status: string) => {
     switch (status.toLowerCase()) {
+      case 'completed':
       case 'success':
       case 'captured':
         return {
@@ -111,29 +117,15 @@ export function PaymentHistory({ payments: initialPayments, className = '' }: Pa
 
   const filteredPayments = payments.filter(payment => {
     if (filter === 'all') return true
-    if (filter === 'success') return ['success', 'captured'].includes(payment.status.toLowerCase())
+    if (filter === 'success') return isPaid(payment.status)
     if (filter === 'failed') return payment.status.toLowerCase() === 'failed'
     if (filter === 'pending') return payment.status.toLowerCase() === 'pending'
     return true
   })
 
-  const downloadReceipt = async (paymentId: string) => {
-    try {
-      const response = await fetch(`/api/payments/${paymentId}/receipt`)
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `vivk-receipt-${paymentId}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-      }
-    } catch (error) {
-      console.error('Error downloading receipt:', error)
-    }
+  // The invoice page has a Print / Save as PDF button
+  const openReceipt = (paymentId: string) => {
+    window.open(`/invoice/${encodeURIComponent(paymentId)}`, '_blank', 'noopener')
   }
 
   if (isLoading) {
@@ -267,9 +259,9 @@ export function PaymentHistory({ payments: initialPayments, className = '' }: Pa
                             {statusDisplay.text}
                           </span>
                           
-                          {payment.status.toLowerCase() === 'success' && (
+                          {payment.status.toLowerCase() === 'completed' && (
                             <button
-                              onClick={() => downloadReceipt(payment.id)}
+                              onClick={() => openReceipt(payment.id)}
                               className="text-blue-600 hover:text-blue-700 text-xs"
                             >
                               Download Receipt
@@ -292,16 +284,16 @@ export function PaymentHistory({ payments: initialPayments, className = '' }: Pa
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-gray-900">
-                {payments.filter(p => ['success', 'captured'].includes(p.status.toLowerCase())).length}
+                {payments.filter(p => isPaid(p.status)).length}
               </div>
               <div className="text-sm text-gray-600">Successful Payments</div>
             </div>
             
             <div>
               <div className="text-2xl font-bold text-gray-900">
-                ₹{payments
-                  .filter(p => ['success', 'captured'].includes(p.status.toLowerCase()))
-                  .reduce((sum, p) => sum + p.amount, 0)
+                ₹{(payments
+                  .filter(p => isPaid(p.status))
+                  .reduce((sum, p) => sum + p.amount, 0) / 100)
                   .toLocaleString('en-IN')}
               </div>
               <div className="text-sm text-gray-600">Total Paid</div>

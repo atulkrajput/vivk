@@ -1,6 +1,17 @@
 import { Resend } from 'resend'
+import { getInvoiceSettings, formatRupees, invoiceUrl, GST_RATE_PERCENT, type Invoice } from './invoices'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Created on first send: the constructor throws without RESEND_API_KEY, and payments import
+// this module, so a missing key must not break checkout
+let resendClient: Resend | null = null
+const resend = {
+  emails: {
+    send: (...args: Parameters<Resend['emails']['send']>) => {
+      resendClient ??= new Resend(process.env.RESEND_API_KEY)
+      return resendClient.emails.send(...args)
+    },
+  },
+}
 
 const FROM_EMAIL = 'VIVK <noreply@email.vivk.in>'
 const BRAND_COLOR = '#2563eb'
@@ -53,7 +64,92 @@ export async function sendPasswordResetEmail(to: string, name: string, resetLink
   }
 }
 
+// ─── Payment Confirmation + Invoice ──────────────────────────────
+
+export async function sendPaymentConfirmationEmail(invoice: Invoice) {
+  try {
+    const settings = getInvoiceSettings()
+    const docName = invoice.gstin ? 'Tax Invoice' : 'Receipt'
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: invoice.customer_email,
+      subject: `Payment confirmed: VIVK ${invoice.plan_name} (${docName} ${invoice.invoice_number})`,
+      html: paymentConfirmationTemplate(invoice, settings),
+    })
+
+    if (error) {
+      console.error('Failed to send payment confirmation email:', error)
+      return false
+    }
+
+    console.log('Payment confirmation email sent:', data?.id)
+    return true
+  } catch (err) {
+    console.error('Payment confirmation email error:', err)
+    return false
+  }
+}
+
 // ─── Email Templates ─────────────────────────────────────────────
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+}
+
+function formatDateIN(value: string | Date) {
+  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })
+}
+
+function paymentConfirmationTemplate(invoice: Invoice, settings: ReturnType<typeof getInvoiceSettings>) {
+  const firstName = escapeHtml(invoice.customer_name.split(' ')[0] || 'there')
+  const docName = invoice.gstin ? 'Tax Invoice' : 'Receipt'
+  const link = invoiceUrl(invoice.payment_id)
+  const row = (label: string, value: string, strong = false) => `
+    <tr>
+      <td style="padding:6px 0;color:#6b7280;font-size:14px;">${label}</td>
+      <td style="padding:6px 0;color:#111827;font-size:14px;text-align:right;${strong ? 'font-weight:700;' : ''}">${value}</td>
+    </tr>`
+
+  return baseLayout(`
+    <h2 style="margin:0 0 16px;color:#111827;font-size:20px;font-weight:600;">Payment received, thank you! ✅</h2>
+    <p style="margin:0 0 20px;color:#4b5563;font-size:15px;line-height:1.6;">
+      Hi ${firstName}, your <strong>VIVK ${escapeHtml(invoice.plan_name)}</strong> plan is now active until
+      <strong>${formatDateIN(invoice.period_end)}</strong>.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:#f9fafb;border-radius:8px;border:1px solid #f3f4f6;">
+      <tr>
+        <td style="padding:20px 24px;">
+          <p style="margin:0 0 4px;color:#111827;font-size:14px;font-weight:600;">${docName} ${escapeHtml(invoice.invoice_number)}</p>
+          <p style="margin:0 0 12px;color:#9ca3af;font-size:12px;">Issued ${formatDateIN(invoice.created_at)} · Order ${escapeHtml(invoice.order_id)}</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${row(`${escapeHtml(invoice.plan_name)} plan (${formatDateIN(invoice.period_start)} – ${formatDateIN(invoice.period_end)})`, formatRupees(invoice.original_amount))}
+            ${invoice.discount_amount > 0 ? row(`Discount${invoice.discount_code ? ` (${escapeHtml(invoice.discount_code)})` : ''}`, `− ${formatRupees(invoice.discount_amount)}`) : ''}
+            ${invoice.gstin ? row('Taxable value', formatRupees(invoice.taxable_amount)) : ''}
+            ${invoice.gstin ? row(`GST @ ${GST_RATE_PERCENT}% (included)`, formatRupees(invoice.gst_amount)) : ''}
+            <tr><td colspan="2" style="border-top:1px solid #e5e7eb;padding-top:6px;"></td></tr>
+            ${row('Total paid', formatRupees(invoice.total_amount), true)}
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+      <tr>
+        <td style="background-color:${BRAND_COLOR};border-radius:8px;">
+          <a href="${link}" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
+            View / Download ${docName}
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
+      Sold by ${escapeHtml(settings.businessName)}${settings.gstin ? ` · GSTIN ${escapeHtml(settings.gstin)}` : ''}.
+      Questions about this payment? Write to ${escapeHtml(settings.supportEmail)}.
+    </p>
+  `)
+}
 
 function baseLayout(content: string) {
   return `

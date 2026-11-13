@@ -5,6 +5,9 @@ import { paymentDb, subscriptionDb, userDb } from './db'
 import { SUBSCRIPTION_PLANS, type SubscriptionTier } from './subscriptions'
 import type { Payment } from '@/types/database.types'
 import { discountService } from './discounts'
+import { issueInvoice, claimInvoiceEmail, releaseInvoiceEmail } from './invoices'
+import { sendPaymentConfirmationEmail } from './email'
+import { CacheService, CACHE_KEYS } from './redis'
 
 // Razorpay rejects orders below ₹1
 export const MIN_ORDER_AMOUNT_PAISE = 100
@@ -309,19 +312,79 @@ export const paymentService = {
       })
     }
 
+    let paymentRowId = payment?.id
     if (payment) {
       await paymentDb.updateStatus(payment.id, 'completed')
     } else {
-      await paymentDb.create({
+      const created = await paymentDb.create({
         user_id: userId,
         razorpay_payment_id: orderId,
         amount: orderAmount,
         currency,
         status: 'completed'
       })
+      paymentRowId = created?.id
+    }
+    await CacheService.delete(`${CACHE_KEYS.PAYMENT_HISTORY}${userId}`)
+
+    // The plan is already active; an invoice or email failure must not undo or fail the payment
+    if (paymentRowId) {
+      await this.sendInvoiceEmail({
+        paymentId: paymentRowId,
+        userId,
+        orderId,
+        tier: subscriptionTier,
+        totalAmount: orderAmount,
+        originalAmount: orderNotes?.original_amount ? Number(orderNotes.original_amount) : undefined,
+        discountAmount: orderNotes?.discount_amount ? Number(orderNotes.discount_amount) : 0,
+        discountCode: orderNotes?.discount_code || null,
+        periodStart: new Date(),
+        periodEnd: nextBillingDate,
+      })
+    } else {
+      console.error(`Order ${orderId} is paid but its payment row could not be saved; no invoice issued`)
     }
 
     return true
+  },
+
+  // Issue the payment's invoice and email it once. Verify and the webhook both get here; the
+  // invoice is unique per payment and the email is claimed before sending, so it goes out once.
+  // If sending fails the claim is released, so a later webhook delivery tries again.
+  async sendInvoiceEmail(params: Parameters<typeof issueInvoice>[0]): Promise<void> {
+    try {
+      const invoice = await issueInvoice(params)
+      if (!(await claimInvoiceEmail(invoice.id))) return
+      if (!(await sendPaymentConfirmationEmail(invoice))) {
+        await releaseInvoiceEmail(invoice.id)
+      }
+    } catch (error) {
+      console.error(`Could not issue invoice or send confirmation for order ${params.orderId}:`, error)
+    }
+  },
+
+  // Invoice details for an already completed payment, read from its Razorpay order. Used for
+  // payments completed before invoices existed, and to retry a confirmation email.
+  async invoiceParamsForPayment(payment: Payment): Promise<Parameters<typeof issueInvoice>[0] | null> {
+    if (payment.status !== 'completed' || !payment.razorpay_payment_id) return null
+    const order: any = await getRazorpayInstance().orders.fetch(payment.razorpay_payment_id)
+    const tier = order?.notes?.subscription_tier as SubscriptionTier | undefined
+    if (!tier || !SUBSCRIPTION_PLANS[tier] || tier === 'free') return null
+    const periodStart = new Date(payment.created_at)
+    const periodEnd = new Date(periodStart)
+    periodEnd.setMonth(periodEnd.getMonth() + 1)
+    return {
+      paymentId: payment.id,
+      userId: payment.user_id,
+      orderId: payment.razorpay_payment_id,
+      tier,
+      totalAmount: payment.amount,
+      originalAmount: order.notes.original_amount ? Number(order.notes.original_amount) : undefined,
+      discountAmount: order.notes.discount_amount ? Number(order.notes.discount_amount) : 0,
+      discountCode: order.notes.discount_code || null,
+      periodStart,
+      periodEnd,
+    }
   },
 
   // Handle payment failure
@@ -557,8 +620,14 @@ export const webhookService = {
   // Unusable orders return true so Razorpay doesn't keep retrying them.
   async handlePaymentCaptured(orderId: string, razorpayPaymentId?: string): Promise<boolean> {
     const payment = await paymentDb.getByRazorpayId(orderId)
-    if (payment?.status === 'completed' || payment?.status === 'refunded') {
-      // Verify (or an earlier delivery) already applied or refunded it
+    if (payment?.status === 'refunded') {
+      return true
+    }
+    if (payment?.status === 'completed') {
+      // Verify (or an earlier delivery) already applied it; finish its confirmation email if
+      // that failed the first time (no-op once it has been sent)
+      const params = await paymentService.invoiceParamsForPayment(payment).catch(() => null)
+      if (params) await paymentService.sendInvoiceEmail(params)
       return true
     }
 
