@@ -46,6 +46,7 @@ export interface Invoice {
   period_end: string
   emailed_at: string | null
   created_at: string
+  lalogix_synced_at?: string | null // when it was reported to LALogix (see lalogix.ts)
 }
 
 export function getInvoiceSettings(): InvoiceSettings {

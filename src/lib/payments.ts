@@ -7,6 +7,7 @@ import type { Payment } from '@/types/database.types'
 import { discountService } from './discounts'
 import { issueInvoice, claimInvoiceEmail, releaseInvoiceEmail } from './invoices'
 import { sendPaymentConfirmationEmail } from './email'
+import { syncInvoiceToLalogix } from './lalogix'
 import { CacheService, CACHE_KEYS } from './redis'
 
 // Razorpay rejects orders below ₹1
@@ -354,6 +355,9 @@ export const paymentService = {
   async sendInvoiceEmail(params: Parameters<typeof issueInvoice>[0]): Promise<void> {
     try {
       const invoice = await issueInvoice(params)
+      // Report it to LALogix for the consolidated GST return. Never throws; a failure is
+      // retried by /api/cron/lalogix-sync. Verify and webhook both get here (idempotent there).
+      if (!invoice.lalogix_synced_at) await syncInvoiceToLalogix(invoice)
       if (!(await claimInvoiceEmail(invoice.id))) return
       if (!(await sendPaymentConfirmationEmail(invoice))) {
         await releaseInvoiceEmail(invoice.id)
