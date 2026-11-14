@@ -37,7 +37,10 @@ export async function middleware(request: NextRequest) {
   const isPublicPage = ['/', '/landing', '/login', '/register', '/reset-password', '/maintenance', '/privacy', '/terms', '/refund-policy']
     .some(route => pathname === route)
   const isAuthApi = pathname.startsWith('/api/auth')
+  // /api/cron/* is called by Vercel Cron and LALogix's "Sync now" with no user session; every
+  // cron route checks "Authorization: Bearer $CRON_SECRET" itself and refuses without it.
   const isPublicApi = pathname.startsWith('/api/health') || pathname.startsWith('/api/payments/webhook') || pathname.startsWith('/api/plans')
+    || pathname.startsWith('/api/cron/')
 
   // No rate limiting on auth API routes (NextAuth needs multiple calls)
   // Only rate limit non-auth API routes
